@@ -1,0 +1,15 @@
+# scratch: probes et scripts jetables (SKILL_GENERAL section 3)
+.scratch/
+
+# dependances et builds
+node_modules/
+target/
+.next/
+dist/
+.anchor/
+
+# secrets et cles locales
+.env
+.env.*
+*.keypair.json
+keypair.json
