@@ -1,0 +1,15 @@
+{
+  "name": "truebook",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "app",
+    "keeper",
+    "packages/*",
+    "program"
+  ],
+  "engines": {
+    "bun": ">=1.3.0"
+  }
+}

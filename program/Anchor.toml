@@ -1,0 +1,19 @@
+[toolchain]
+package_manager = "npm"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+truebook = "59txn6d3rHFtvhocB5ZvhhJsTurGNq1d1gcbDy7o43fh"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "bunx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
