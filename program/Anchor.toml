@@ -17,3 +17,24 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "bunx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test]
+startup_wait = 40000
+
+# Clone the live TxLINE oracle from devnet so CPI resolution runs against real
+# merkle roots on a local validator. Program + programdata + the two daily-root
+# PDAs used by the fixture proofs (scores epoch day 20636, odds epoch day 20630).
+[test.validator]
+url = "https://api.devnet.solana.com"
+
+[[test.validator.clone]]
+address = "6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J"
+
+[[test.validator.clone]]
+address = "JiHVdvciZ3igyr95kRLJBiTMtBss5CnYhNcRWL6GkhU"
+
+[[test.validator.clone]]
+address = "FNLRxCxRf3idEDyixYg8uHj9xEVJSuqHvStxwRHf7k6e"
+
+[[test.validator.clone]]
+address = "2jrJG67oRfbDKwMNZBg86LD6vXviHRXaWcNcozrHjMom"
