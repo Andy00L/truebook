@@ -56,4 +56,10 @@ pub enum TrueBookError {
     MessageIdTooLong,
     #[msg("Unauthorized: signer is not the house authority.")]
     Unauthorized,
+    #[msg("The proof predicate does not match the market's committed predicate.")]
+    PredicateMismatch,
+    #[msg("The provided daily-root account does not match the timestamp's expected PDA.")]
+    InvalidRootAccount,
+    #[msg("The audited odds record does not match the ticket's referenced quote.")]
+    OddsRecordMismatch,
 }

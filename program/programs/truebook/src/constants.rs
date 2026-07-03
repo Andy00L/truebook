@@ -1,6 +1,21 @@
 // TrueBook program constants. Values with an external source carry a sourceRef.
 
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::pubkey;
+
+// The TxLINE oracle program on devnet. Score and odds proofs are validated by
+// CPI into this program. sourceRef: packages/shared/src/config.ts TXLINE_PROGRAM_ID.
+#[constant]
+pub const TXLINE_PROGRAM_ID: Pubkey = pubkey!("6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J");
+
+// TxLINE daily-root PDA seeds, used to derive the accounts a proof validates against.
+#[constant]
+pub const TXLINE_DAILY_SCORES_SEED: &[u8] = b"daily_scores_roots";
+#[constant]
+pub const TXLINE_DAILY_BATCH_SEED: &[u8] = b"daily_batch_roots";
+
+// Milliseconds per day, for deriving the TxLINE epoch-day from a proof timestamp.
+pub const MILLISECONDS_PER_DAY_I64: i64 = 24 * 60 * 60 * 1000;
 
 // PDA seeds.
 #[constant]
@@ -21,6 +36,10 @@ pub const BPS_DENOMINATOR: u64 = 10_000;
 // sourceRef: TxLINE StablePrice Prices are decimal odds * 1000; we keep a finer
 // basis-point scale internally. See packages/shared/src/config.ts ODDS_DECIMAL_SCALE.
 pub const ODDS_BPS_SCALE: u64 = 10_000;
+
+// TxLINE StablePrice Prices are decimal odds * 1000. Multiply a raw price by
+// (ODDS_BPS_SCALE / TXLINE_PRICE_DECIMAL_SCALE) to reach our internal odds bps.
+pub const TXLINE_PRICE_DECIMAL_SCALE: u64 = 1_000;
 
 // A served quote is only valid for this many seconds before a bet must refresh it.
 pub const QUOTE_VALIDITY_SECONDS: i64 = 120;

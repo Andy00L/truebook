@@ -97,6 +97,10 @@ pub struct Market {
     pub market_id: u64,
     pub fixture_id: i64,
     pub params: MarketParams,
+    // Which entry in a StablePrice record's prices[] is this market's YES outcome.
+    // Committed at creation so a price audit is trustless. NO consensus is derived
+    // as the complement of the YES implied probability.
+    pub outcome_price_index: u8,
     pub kickoff_ts: i64,
     pub state: MarketState,
     // Current served quote (basis points of decimal odds), with its provenance.

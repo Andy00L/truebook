@@ -9,10 +9,12 @@ pub mod errors;
 pub mod events;
 pub mod math;
 pub mod state;
+pub mod txline_cpi;
 pub mod instructions;
 
 use instructions::*;
 use state::{MarketParams, Side};
+use txline_cpi::{ValidateOddsArgs, ValidateStatArgs};
 
 declare_id!("59txn6d3rHFtvhocB5ZvhhJsTurGNq1d1gcbDy7o43fh");
 
@@ -45,9 +47,10 @@ pub mod truebook {
         ctx: Context<CreateMarket>,
         fixture_id: i64,
         params: MarketParams,
+        outcome_price_index: u8,
         kickoff_ts: i64,
     ) -> Result<()> {
-        instructions::create_market::handler(ctx, fixture_id, params, kickoff_ts)
+        instructions::create_market::handler(ctx, fixture_id, params, outcome_price_index, kickoff_ts)
     }
 
     // Keeper posts a fresh quote sourced from a specific StablePrice record.
@@ -69,6 +72,17 @@ pub mod truebook {
     // Lock a market once kickoff has passed; permissionless.
     pub fn lock_market(ctx: Context<LockMarket>) -> Result<()> {
         instructions::lock_market::handler(ctx)
+    }
+
+    // Prove a market's outcome by CPI into TxLINE validate_stat; permissionless.
+    pub fn verify_market(ctx: Context<VerifyMarket>, args: ValidateStatArgs, seq: u32) -> Result<()> {
+        instructions::verify_market::handler(ctx, args, seq)
+    }
+
+    // Audit a ticket's served price against the TxLINE consensus by CPI into
+    // validate_odds; a proven overcharge makes the ticket refundable.
+    pub fn audit_ticket(ctx: Context<AuditTicket>, args: ValidateOddsArgs) -> Result<()> {
+        instructions::audit_ticket::handler(ctx, args)
     }
 
     // Pay out or close a ticket against a verified outcome; permissionless crank.

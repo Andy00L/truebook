@@ -26,6 +26,7 @@ pub fn handler(
     ctx: Context<CreateMarket>,
     fixture_id: i64,
     params: MarketParams,
+    outcome_price_index: u8,
     kickoff_ts: i64,
 ) -> Result<()> {
     let market_id = ctx.accounts.house.market_count;
@@ -36,6 +37,7 @@ pub fn handler(
     market.market_id = market_id;
     market.fixture_id = fixture_id;
     market.params = params;
+    market.outcome_price_index = outcome_price_index;
     market.kickoff_ts = kickoff_ts;
     market.state = MarketState::Open;
     market.yes_odds_bps = 0;
