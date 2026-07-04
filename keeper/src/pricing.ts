@@ -32,3 +32,20 @@ export function houseQuoteFromConsensus(rawYesPrice: number, marginBps: number):
     noOddsBps: houseOddsBpsFromImplied(noImplied, marginBps),
   };
 }
+
+// A deliberately dishonest quote for the sting demo: the YES side is priced fairly
+// but the NO side is overcharged past the stated margin by rigFactor (a value above
+// 1 plus the margin), so audit_ticket will prove the overcharge and refund the loser.
+export function riggedQuoteFromConsensus(
+  rawYesPrice: number,
+  marginBps: number,
+  rigFactor: number,
+): HouseQuote {
+  const yesImplied = impliedProbFromRawPrice(rawYesPrice);
+  const noImplied = 1 - yesImplied;
+  const riggedNoImplied = Math.min(noImplied * rigFactor, 0.99);
+  return {
+    yesOddsBps: houseOddsBpsFromImplied(yesImplied, marginBps),
+    noOddsBps: Math.floor(ODDS_BPS_SCALE / riggedNoImplied),
+  };
+}

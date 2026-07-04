@@ -19,7 +19,7 @@ import {
 } from "@truebook/shared";
 import { dailyScoresRootPda } from "./pdas.js";
 import { HOME_WIN, toMarketParams } from "./catalog.js";
-import { houseQuoteFromConsensus } from "./pricing.js";
+import { houseQuoteFromConsensus, riggedQuoteFromConsensus } from "./pricing.js";
 import { buildStatArgs } from "./proofArgs.js";
 
 const CU_LIMIT = 1_400_000;
@@ -107,6 +107,45 @@ export async function postQuotes(program: Program<Truebook>, auth: TxlineAuth): 
     }
   }
   return quotedCount;
+}
+
+// The sting: post one deliberately overcharged quote on a sacrificial market so
+// the audit path can be shown catching a dishonest price. The YES side stays fair;
+// the NO side is priced past the margin by rigFactor. Returns the market key on success.
+export async function postRiggedQuote(
+  program: Program<Truebook>,
+  auth: TxlineAuth,
+  marketKey: PublicKey,
+  rigFactor: number,
+): Promise<boolean> {
+  const houseInfo = await fetchHouse(program);
+  if (!houseInfo) return false;
+  const market = await program.account.market.fetch(marketKey);
+  if (!("open" in market.state)) {
+    console.log(`[postRiggedQuote] ${marketKey.toBase58()} is not open`);
+    return false;
+  }
+  const oddsResult = await getOddsUpdates(auth, market.fixtureId.toNumber());
+  if (!oddsResult.ok) {
+    console.error(`[postRiggedQuote] ${oddsResult.reason}`);
+    return false;
+  }
+  const record = oddsResult.value.find((entry) => entry.SuperOddsType === HOME_WIN.superOddsType);
+  const rawYesPrice = record?.Prices[HOME_WIN.outcomePriceIndex];
+  if (!record || rawYesPrice === undefined || rawYesPrice <= 0) {
+    console.error(`[postRiggedQuote] no ${HOME_WIN.superOddsType} price for fixture ${market.fixtureId.toString()}`);
+    return false;
+  }
+
+  const quote = riggedQuoteFromConsensus(rawYesPrice, houseInfo.account.marginBps, rigFactor);
+  await program.methods
+    .postQuote(quote.yesOddsBps, quote.noOddsBps, record.MessageId, new BN(record.Ts))
+    .accounts({ keeper: keeperPubkey(program), market: marketKey })
+    .rpc();
+  console.log(
+    `[postRiggedQuote] rigged NO on ${marketKey.toBase58()}: yes=${quote.yesOddsBps} no=${quote.noOddsBps} (factor ${rigFactor})`,
+  );
+  return true;
 }
 
 export async function lockDueMarkets(program: Program<Truebook>): Promise<number> {

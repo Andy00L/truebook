@@ -1,22 +1,26 @@
 // TrueBook keeper entry point. Commands:
-//   setup            initialize the house (one time, by the operator)
-//   tick (default)   create markets, lock due ones, refresh quotes from TxLINE
-//   settle <market>  prove a locked market's outcome and pay its tickets
+//   setup                initialize the house (one time, by the operator)
+//   tick (default)       create markets, lock due ones, refresh quotes from TxLINE
+//   settle <market>      prove a locked market's outcome and pay its tickets
+//   rig <market> [factor] post one overcharged NO quote for the sting demo
 
 import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import { USDT_MINT_DEVNET } from "@truebook/shared";
 import { buildProgram, getConnection, loadKeeperKeypair } from "./env.js";
-
-// Default house margin in basis points (2 percent), used at setup.
-const DEFAULT_MARGIN_BPS_VALUE = 200;
 import { acquireTxlineAuth } from "./txlineAuth.js";
 import {
   createMarketsForFixtures,
   lockDueMarkets,
   postQuotes,
+  postRiggedQuote,
   verifyAndSettleMarket,
 } from "./jobs.js";
+
+// Default house margin in basis points (2 percent), used at setup.
+const DEFAULT_MARGIN_BPS_VALUE = 200;
+// Default NO overcharge for the sting: 1.5x the fair NO probability, far past margin.
+const DEFAULT_RIG_FACTOR = 1.5;
 
 async function runSetup(): Promise<void> {
   const connection = getConnection();
@@ -54,6 +58,21 @@ async function runTickOrSettle(command: string, marketArg: string | undefined): 
     return;
   }
 
+  if (command === "rig") {
+    if (!marketArg) {
+      console.error("[main] usage: rig <marketPubkey> [factor]");
+      process.exit(1);
+    }
+    const factorArg = process.argv[4];
+    const rigFactor = factorArg ? Number(factorArg) : DEFAULT_RIG_FACTOR;
+    if (!Number.isFinite(rigFactor) || rigFactor <= 1) {
+      console.error("[main] rig factor must be a number greater than 1");
+      process.exit(1);
+    }
+    await postRiggedQuote(program, auth, new PublicKey(marketArg), rigFactor);
+    return;
+  }
+
   const createdCount = await createMarketsForFixtures(program, auth);
   const lockedCount = await lockDueMarkets(program);
   const quotedCount = await postQuotes(program, auth);
@@ -66,6 +85,7 @@ async function main(): Promise<void> {
     await runSetup();
     return;
   }
+  // tick, settle, and rig all authenticate to TxLINE first.
   await runTickOrSettle(command, process.argv[3]);
 }
 
