@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TrueBook design tokens</title>
+    <style>
+      :root {
+        --field: #0b0e11;
+        --surface: #12161b;
+        --elevated: #171c22;
+        --border: #1e242b;
+        --ink: #e8ecf1;
+        --muted: #8a94a3;
+        --faint: #566072;
+        --green: #00e676;
+        --green-soft: rgba(0, 230, 118, 0.12);
+        --amber: #f5a623;
+        --red: #ff5252;
+        --sans: ui-sans-serif, system-ui, sans-serif;
+        --mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--field);
+        color: var(--ink);
+        font-family: var(--sans);
+        padding: 40px;
+      }
+      .wrap { max-width: 1120px; margin: 0 auto; }
+      .eyebrow {
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+        color: var(--faint); margin: 0 0 8px;
+      }
+      h1 { font-size: 28px; font-weight: 600; margin: 0 0 4px; }
+      .sub { color: var(--muted); margin: 0 0 32px; font-size: 14px; }
+      .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 32px; }
+      .swatch {
+        border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+        background: var(--surface); box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+      }
+      .chip { height: 64px; }
+      .swatch .label { padding: 8px 10px; font-size: 12px; }
+      .swatch .name { color: var(--ink); }
+      .swatch .hex { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+      .panels { display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; }
+      .card {
+        background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+        padding: 18px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 8px 24px rgba(0,0,0,0.32);
+      }
+      .row { display: flex; align-items: baseline; justify-content: space-between; }
+      .team { font-size: 16px; font-weight: 600; }
+      .clock { font-family: var(--mono); color: var(--green); font-size: 13px; font-variant-numeric: tabular-nums; }
+      .market { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 14px; }
+      .market .name { font-size: 13px; color: var(--muted); }
+      .odds { display: flex; gap: 10px; margin-top: 8px; }
+      .odd {
+        flex: 1; text-align: center; border: 1px solid var(--border); border-radius: 12px;
+        padding: 12px 8px; background: var(--elevated);
+      }
+      .odd .side { font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: 0.08em; }
+      .odd .val { font-family: var(--mono); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; }
+      .odd.live { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+      .bar { margin-top: 14px; }
+      .bar .track { height: 8px; border-radius: 999px; background: var(--elevated); border: 1px solid var(--border); overflow: hidden; display: flex; }
+      .bar .consensus { width: 84%; background: var(--green-soft); }
+      .bar .margin { width: 16%; background: var(--amber); opacity: 0.5; }
+      .bar .legend { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+      .receipt {
+        background: var(--elevated); border: 1px solid var(--border); border-radius: 16px; padding: 18px;
+        position: relative;
+      }
+      .perf { border-top: 1px dashed var(--border); margin: 14px -18px; }
+      .receipt .title { font-size: 13px; color: var(--muted); }
+      .receipt .line { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+      .receipt .hash { color: var(--faint); }
+      .stamp {
+        margin-top: 14px; display: inline-block; border: 1px solid var(--green); color: var(--green);
+        border-radius: 8px; padding: 6px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      }
+      .btn {
+        margin-top: 16px; width: 100%; background: var(--green); color: #04120a; border: none;
+        border-radius: 12px; padding: 12px; font-size: 14px; font-weight: 600; font-family: var(--sans);
+      }
+      .type-demo { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      .type-demo .card p { margin: 6px 0; }
+      .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p class="eyebrow">TrueBook</p>
+      <h1>Design tokens</h1>
+      <p class="sub">Broadcast dark. One accent (scoreboard green). Numbers monospaced and tabular. Green only where live or proven.</p>
+
+      <div class="grid">
+        <div class="swatch"><div class="chip" style="background:#0b0e11"></div><div class="label"><div class="name">Field</div><div class="hex">#0B0E11</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#12161b"></div><div class="label"><div class="name">Surface</div><div class="hex">#12161B</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#171c22"></div><div class="label"><div class="name">Elevated</div><div class="hex">#171C22</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#1e242b"></div><div class="label"><div class="name">Border</div><div class="hex">#1E242B</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#e8ecf1"></div><div class="label"><div class="name">Ink</div><div class="hex">#E8ECF1</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#8a94a3"></div><div class="label"><div class="name">Muted</div><div class="hex">#8A94A3</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#566072"></div><div class="label"><div class="name">Faint</div><div class="hex">#566072</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#00e676"></div><div class="label"><div class="name">Accent green</div><div class="hex">#00E676</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#00a050"></div><div class="label"><div class="name">Accent deep</div><div class="hex">#00A050</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#f5a623"></div><div class="label"><div class="name">Reserved amber</div><div class="hex">#F5A623</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#ff5252"></div><div class="label"><div class="name">Destructive</div><div class="hex">#FF5252</div></div></div>
+        <div class="swatch"><div class="chip" style="background:#04120a"></div><div class="label"><div class="name">On-accent ink</div><div class="hex">#04120A</div></div></div>
+      </div>
+
+      <div class="panels">
+        <div class="card">
+          <div class="row"><div class="team">France vs Argentina</div><div class="clock">67:12 LIVE</div></div>
+          <div class="market">
+            <div class="name">Home win</div>
+            <div class="odds">
+              <div class="odd live"><div class="side">France</div><div class="val">2.06</div></div>
+              <div class="odd"><div class="side">Draw</div><div class="val">3.40</div></div>
+              <div class="odd"><div class="side">Argentina</div><div class="val">3.75</div></div>
+            </div>
+            <div class="bar">
+              <div class="track"><div class="consensus"></div><div class="margin"></div></div>
+              <div class="legend"><span>consensus 2.10</span><span>margin 2.0%</span><span>your price 2.06</span></div>
+            </div>
+          </div>
+          <button class="btn">Place bet</button>
+        </div>
+
+        <div class="receipt">
+          <div class="title">Proof receipt</div>
+          <div class="line"><span>Home win</span><span>WON</span></div>
+          <div class="line"><span>Stake</span><span>100.00 USDC</span></div>
+          <div class="line"><span>Payout</span><span>206.00 USDC</span></div>
+          <div class="perf"></div>
+          <div class="line"><span class="hash">day root</span><span class="hash">4d2c70...101033</span></div>
+          <div class="line"><span class="hash">merkle path</span><span class="hash">0669ea...b9537d</span></div>
+          <div class="line"><span class="hash">verify tx</span><span class="hash">3NmXRo...KNeLiFh</span></div>
+          <div class="stamp">Verified on Solana</div>
+        </div>
+      </div>
+
+      <div class="type-demo">
+        <div class="card">
+          <p class="eyebrow">UI face</p>
+          <p style="font-size:20px;font-weight:600">Geist Sans, weight ceiling 600</p>
+          <p style="color:var(--muted)">Sentence case titles and buttons. Muted secondary text.</p>
+        </div>
+        <div class="card">
+          <p class="eyebrow">Precise face</p>
+          <p class="mono" style="font-size:20px">0.00 2.06 100.00 67:12</p>
+          <p class="mono" style="color:var(--muted)">Geist Mono, tabular numerals, never reflow</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
