@@ -42,11 +42,15 @@ pub fn handler(ctx: Context<RefundTicket>) -> Result<()> {
     let refund_amount = ctx.accounts.ticket.stake;
     let ticket_payout = ctx.accounts.ticket.potential_payout;
 
-    // Free the ticket's reserved liability, then return the stake.
-    let house = &mut ctx.accounts.house;
-    house.open_exposure = house.open_exposure.saturating_sub(ticket_payout);
+    // Release the reserved liability only if settle has not already released it,
+    // then return the stake.
+    if !ctx.accounts.ticket.exposure_released {
+        ctx.accounts.house.open_exposure =
+            ctx.accounts.house.open_exposure.saturating_sub(ticket_payout);
+    }
+    ctx.accounts.ticket.exposure_released = true;
 
-    let house_bump = house.bump;
+    let house_bump = ctx.accounts.house.bump;
     let signer_seeds: &[&[&[u8]]] = &[&[HOUSE_SEED, &[house_bump]]];
     let cpi_accounts = Transfer {
         from: ctx.accounts.vault.to_account_info(),

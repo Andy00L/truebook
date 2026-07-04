@@ -1703,6 +1703,10 @@ export type Truebook = {
             }
           },
           {
+            "name": "exposureReleased",
+            "type": "bool"
+          },
+          {
             "name": "createdTs",
             "type": "i64"
           },

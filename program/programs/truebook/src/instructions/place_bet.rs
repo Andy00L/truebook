@@ -137,6 +137,7 @@ pub fn handler(ctx: Context<PlaceBet>, nonce: u64, side: Side, stake: u64) -> Re
     ticket.potential_payout = payout;
     ticket.state = TicketState::Live;
     ticket.audit_status = AuditStatus::Unaudited;
+    ticket.exposure_released = false;
     ticket.created_ts = now;
     ticket.nonce = nonce;
     ticket.bump = ctx.bumps.ticket;

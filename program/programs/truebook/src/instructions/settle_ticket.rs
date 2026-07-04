@@ -80,6 +80,9 @@ pub fn handler(ctx: Context<SettleTicket>) -> Result<()> {
         // Losing stake stays in the vault as house revenue.
         ctx.accounts.ticket.state = TicketState::Lost;
     }
+    // Liability resolved for this ticket; a later audit-driven refund must not
+    // release it from open_exposure a second time.
+    ctx.accounts.ticket.exposure_released = true;
 
     emit!(TicketSettled {
         market: ctx.accounts.market.key(),

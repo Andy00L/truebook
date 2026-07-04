@@ -28,9 +28,104 @@ const FIXTURE_ID = new BN(18172379);
 const USDT_DECIMALS = 6;
 
 type ProofNodeJson = { hash: number[]; isRightSibling: boolean };
+type ScoreStatJson = { key: number; value: number; period: number };
+type UpdateStatsJson = { updateCount: number; minTimestamp: number; maxTimestamp: number };
+type StatProofFixture = {
+  summary: { fixtureId: number; updateStats: UpdateStatsJson; eventStatsSubTreeRoot: number[] };
+  statToProve: ScoreStatJson;
+  statToProve2: ScoreStatJson;
+  eventStatRoot: number[];
+  statProof: ProofNodeJson[];
+  statProof2: ProofNodeJson[];
+  subTreeProof: ProofNodeJson[];
+  mainTreeProof: ProofNodeJson[];
+};
+type OddsValidationFixture = {
+  odds: {
+    FixtureId: number;
+    MessageId: string;
+    Ts: number;
+    Bookmaker: string;
+    BookmakerId: number;
+    SuperOddsType: string;
+    GameState: string | null;
+    InRunning: boolean;
+    MarketParameters: string | null;
+    MarketPeriod: string | null;
+    PriceNames: string[];
+    Prices: number[];
+  };
+  summary: { fixtureId: number; updateStats: UpdateStatsJson; oddsSubTreeRoot: number[] };
+  subTreeProof: ProofNodeJson[];
+  mainTreeProof: ProofNodeJson[];
+};
+
 const mapProof = (nodes: ProofNodeJson[]) =>
   nodes.map((node) => ({ hash: node.hash, isRightSibling: node.isRightSibling }));
 const sleep = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+// Home-win validate_stat args from the scores fixture: (P1 goals - P2 goals) > 0.
+function buildStatArgs(proof: StatProofFixture) {
+  return {
+    ts: new BN(proof.summary.updateStats.minTimestamp),
+    fixtureSummary: {
+      fixtureId: new BN(proof.summary.fixtureId),
+      updateStats: {
+        updateCount: proof.summary.updateStats.updateCount,
+        minTimestamp: new BN(proof.summary.updateStats.minTimestamp),
+        maxTimestamp: new BN(proof.summary.updateStats.maxTimestamp),
+      },
+      eventsSubTreeRoot: proof.summary.eventStatsSubTreeRoot,
+    },
+    fixtureProof: mapProof(proof.subTreeProof),
+    mainTreeProof: mapProof(proof.mainTreeProof),
+    predicate: { threshold: 0, comparison: { greaterThan: {} } },
+    statA: {
+      statToProve: proof.statToProve,
+      eventStatRoot: proof.eventStatRoot,
+      statProof: mapProof(proof.statProof),
+    },
+    statB: {
+      statToProve: proof.statToProve2,
+      eventStatRoot: proof.eventStatRoot,
+      statProof: mapProof(proof.statProof2),
+    },
+    op: { subtract: {} },
+  };
+}
+
+// validate_odds args from the odds validation fixture.
+function buildOddsArgs(validation: OddsValidationFixture) {
+  const odds = validation.odds;
+  return {
+    ts: new BN(validation.summary.updateStats.minTimestamp),
+    oddsSnapshot: {
+      fixtureId: new BN(odds.FixtureId),
+      messageId: odds.MessageId,
+      ts: new BN(odds.Ts),
+      bookmaker: odds.Bookmaker,
+      bookmakerId: odds.BookmakerId,
+      superOddsType: odds.SuperOddsType,
+      gameState: odds.GameState,
+      inRunning: odds.InRunning,
+      marketParameters: odds.MarketParameters,
+      marketPeriod: odds.MarketPeriod,
+      priceNames: odds.PriceNames,
+      prices: odds.Prices,
+    },
+    summary: {
+      fixtureId: new BN(validation.summary.fixtureId),
+      updateStats: {
+        updateCount: validation.summary.updateStats.updateCount,
+        minTimestamp: new BN(validation.summary.updateStats.minTimestamp),
+        maxTimestamp: new BN(validation.summary.updateStats.maxTimestamp),
+      },
+      oddsSubTreeRoot: validation.summary.oddsSubTreeRoot,
+    },
+    subTreeProof: mapProof(validation.subTreeProof),
+    mainTreeProof: mapProof(validation.mainTreeProof),
+  };
+}
 
 describe("truebook", () => {
   const provider = anchor.AnchorProvider.env();
@@ -38,8 +133,12 @@ describe("truebook", () => {
   const program = anchor.workspace.truebook as Program<Truebook>;
   const operator = (provider.wallet as anchor.Wallet).payer;
 
-  const scoresProof = JSON.parse(readFileSync("tests/fixtures/scores-proof-home-win.json", "utf8"));
-  const oddsValidation = JSON.parse(readFileSync("tests/fixtures/odds-validation-1x2.json", "utf8"));
+  const scoresProof: StatProofFixture = JSON.parse(
+    readFileSync("tests/fixtures/scores-proof-home-win.json", "utf8"),
+  );
+  const oddsValidation: OddsValidationFixture = JSON.parse(
+    readFileSync("tests/fixtures/odds-validation-1x2.json", "utf8"),
+  );
 
   let usdtMint: PublicKey;
   let operatorTokenAccount: PublicKey;
@@ -156,32 +255,7 @@ describe("truebook", () => {
     await sleep(6000);
     await program.methods.lockMarket().accounts({ cranker: operator.publicKey, market: marketPda }).rpc();
 
-    const statArgs = {
-      ts: new BN(scoresProof.summary.updateStats.minTimestamp),
-      fixtureSummary: {
-        fixtureId: new BN(scoresProof.summary.fixtureId),
-        updateStats: {
-          updateCount: scoresProof.summary.updateStats.updateCount,
-          minTimestamp: new BN(scoresProof.summary.updateStats.minTimestamp),
-          maxTimestamp: new BN(scoresProof.summary.updateStats.maxTimestamp),
-        },
-        eventsSubTreeRoot: scoresProof.summary.eventStatsSubTreeRoot,
-      },
-      fixtureProof: mapProof(scoresProof.subTreeProof),
-      mainTreeProof: mapProof(scoresProof.mainTreeProof),
-      predicate: { threshold: 0, comparison: { greaterThan: {} } },
-      statA: {
-        statToProve: scoresProof.statToProve,
-        eventStatRoot: scoresProof.eventStatRoot,
-        statProof: mapProof(scoresProof.statProof),
-      },
-      statB: {
-        statToProve: scoresProof.statToProve2,
-        eventStatRoot: scoresProof.eventStatRoot,
-        statProof: mapProof(scoresProof.statProof2),
-      },
-      op: { subtract: {} },
-    };
+    const statArgs = buildStatArgs(scoresProof);
 
     await program.methods
       .verifyMarket(statArgs, 1058)
@@ -222,34 +296,7 @@ describe("truebook", () => {
   });
 
   it("audits the served price against consensus and finds it honest", async () => {
-    const oddsArgs = {
-      ts: new BN(oddsValidation.summary.updateStats.minTimestamp),
-      oddsSnapshot: {
-        fixtureId: new BN(oddsValidation.odds.FixtureId),
-        messageId: oddsValidation.odds.MessageId,
-        ts: new BN(oddsValidation.odds.Ts),
-        bookmaker: oddsValidation.odds.Bookmaker,
-        bookmakerId: oddsValidation.odds.BookmakerId,
-        superOddsType: oddsValidation.odds.SuperOddsType,
-        gameState: oddsValidation.odds.GameState,
-        inRunning: oddsValidation.odds.InRunning,
-        marketParameters: oddsValidation.odds.MarketParameters,
-        marketPeriod: oddsValidation.odds.MarketPeriod,
-        priceNames: oddsValidation.odds.PriceNames,
-        prices: oddsValidation.odds.Prices,
-      },
-      summary: {
-        fixtureId: new BN(oddsValidation.summary.fixtureId),
-        updateStats: {
-          updateCount: oddsValidation.summary.updateStats.updateCount,
-          minTimestamp: new BN(oddsValidation.summary.updateStats.minTimestamp),
-          maxTimestamp: new BN(oddsValidation.summary.updateStats.maxTimestamp),
-        },
-        oddsSubTreeRoot: oddsValidation.summary.oddsSubTreeRoot,
-      },
-      subTreeProof: mapProof(oddsValidation.subTreeProof),
-      mainTreeProof: mapProof(oddsValidation.mainTreeProof),
-    };
+    const oddsArgs = buildOddsArgs(oddsValidation);
 
     await program.methods
       .auditTicket(oddsArgs)
@@ -266,5 +313,160 @@ describe("truebook", () => {
 
     const ticket = await program.account.ticket.fetch(ticketPda);
     assert.deepEqual(ticket.auditStatus, { honest: {} });
+  });
+
+  it("refunds a losing ticket even when the house settles before the audit", async () => {
+    // Second market on the same fixture. The house rigs the NO price: consensus
+    // home-win implied is ~62 percent, so fair NO is ~38 percent (about 2.63
+    // decimal). Serving NO at 2.00 (implied 50 percent) is far outside the
+    // 2 percent margin plus tolerance: a provable overcharge.
+    const [market2Pda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("market"), housePda.toBuffer(), new BN(1).toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+    const [outcome2Pda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("outcome"), market2Pda.toBuffer()],
+      program.programId,
+    );
+    const riggedNoOddsBps = 20_000; // 2.00 decimal, rigged (fair is ~2.63)
+    const noStake = new BN(50_000_000); // 50 USDT
+    const yesStake = new BN(10_000_000); // 10 USDT, stays live to guard exposure math
+    const noNonce = new BN(2);
+    const yesNonce = new BN(3);
+    const [ticketNoPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("ticket"), market2Pda.toBuffer(), bettor.publicKey.toBuffer(), noNonce.toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+    const [ticketYesPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("ticket"), market2Pda.toBuffer(), bettor.publicKey.toBuffer(), yesNonce.toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+
+    const kickoffTs = new BN(Math.floor(Date.now() / 1000) + 5);
+    await program.methods
+      .createMarket(FIXTURE_ID, marketParams, 0, kickoffTs)
+      .accounts({ authority: operator.publicKey, house: housePda, market: market2Pda })
+      .rpc();
+    await program.methods
+      .postQuote(yesOddsBps, riggedNoOddsBps, oddsValidation.odds.MessageId, new BN(oddsValidation.odds.Ts))
+      .accounts({ keeper: operator.publicKey, house: housePda, market: market2Pda })
+      .rpc();
+
+    for (const [nonce, side, stake_] of [
+      [noNonce, { no: {} }, noStake],
+      [yesNonce, { yes: {} }, yesStake],
+    ] as const) {
+      await program.methods
+        .placeBet(nonce, side, stake_)
+        .accounts({
+          bettor: bettor.publicKey,
+          house: housePda,
+          market: market2Pda,
+          ticket:
+            nonce === noNonce ? ticketNoPda : ticketYesPda,
+          vault: vaultPda,
+          bettorTokenAccount,
+        })
+        .signers([bettor])
+        .rpc();
+    }
+
+    await sleep(6000);
+    await program.methods.lockMarket().accounts({ cranker: operator.publicKey, market: market2Pda }).rpc();
+    await program.methods
+      .verifyMarket(buildStatArgs(scoresProof), 1058)
+      .accounts({
+        cranker: operator.publicKey,
+        house: housePda,
+        market: market2Pda,
+        verifiedOutcome: outcome2Pda,
+        dailyScoresMerkleRoots: SCORES_ROOT_PDA,
+        txoracleProgram: TXORACLE_PROGRAM,
+      })
+      .preInstructions([anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 })])
+      .rpc();
+
+    // The house front-runs the audit: settle the losing NO ticket immediately.
+    await program.methods
+      .settleTicket()
+      .accounts({
+        cranker: operator.publicKey,
+        house: housePda,
+        market: market2Pda,
+        verifiedOutcome: outcome2Pda,
+        ticket: ticketNoPda,
+        vault: vaultPda,
+        bettorTokenAccount,
+      })
+      .rpc();
+    let ticketNo = await program.account.ticket.fetch(ticketNoPda);
+    assert.deepEqual(ticketNo.state, { lost: {} }, "front-run settle marks the ticket Lost");
+
+    // Exposure still owed to the live YES ticket, and to nothing else.
+    const houseAfterSettle = await program.account.house.fetch(housePda);
+    const yesTicket = await program.account.ticket.fetch(ticketYesPda);
+    assert.equal(
+      houseAfterSettle.openExposure.toString(),
+      yesTicket.potentialPayout.toString(),
+      "after settling NO, exposure equals the live YES ticket payout",
+    );
+
+    // The audit still catches the overcharge and reopens the Lost ticket.
+    await program.methods
+      .auditTicket(buildOddsArgs(oddsValidation))
+      .accounts({
+        cranker: operator.publicKey,
+        house: housePda,
+        market: market2Pda,
+        ticket: ticketNoPda,
+        dailyOddsMerkleRoots: ODDS_ROOT_PDA,
+        txoracleProgram: TXORACLE_PROGRAM,
+      })
+      .preInstructions([anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 })])
+      .rpc();
+    ticketNo = await program.account.ticket.fetch(ticketNoPda);
+    assert.deepEqual(ticketNo.auditStatus, { violation: {} }, "audit proves the overcharge");
+    assert.deepEqual(ticketNo.state, { refundable: {} }, "a settled Lost ticket becomes refundable");
+
+    // Refund returns the full stake without double-releasing exposure.
+    const balanceBefore = (await getAccount(provider.connection, bettorTokenAccount)).amount;
+    await program.methods
+      .refundTicket()
+      .accounts({
+        cranker: operator.publicKey,
+        house: housePda,
+        market: market2Pda,
+        ticket: ticketNoPda,
+        vault: vaultPda,
+        bettorTokenAccount,
+      })
+      .rpc();
+    const balanceAfter = (await getAccount(provider.connection, bettorTokenAccount)).amount;
+    assert.equal((balanceAfter - balanceBefore).toString(), noStake.toString(), "full stake refunded");
+    ticketNo = await program.account.ticket.fetch(ticketNoPda);
+    assert.deepEqual(ticketNo.state, { refunded: {} });
+
+    const houseAfterRefund = await program.account.house.fetch(housePda);
+    assert.equal(
+      houseAfterRefund.openExposure.toString(),
+      yesTicket.potentialPayout.toString(),
+      "refund does not release the settled ticket's exposure a second time",
+    );
+
+    // Clean up: settle the live YES winner and check exposure returns to zero.
+    await program.methods
+      .settleTicket()
+      .accounts({
+        cranker: operator.publicKey,
+        house: housePda,
+        market: market2Pda,
+        verifiedOutcome: outcome2Pda,
+        ticket: ticketYesPda,
+        vault: vaultPda,
+        bettorTokenAccount,
+      })
+      .rpc();
+    const houseFinal = await program.account.house.fetch(housePda);
+    assert.equal(houseFinal.openExposure.toString(), "0", "all exposure released exactly once");
   });
 });

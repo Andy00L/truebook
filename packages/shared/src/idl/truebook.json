@@ -1697,6 +1697,10 @@
             }
           },
           {
+            "name": "exposure_released",
+            "type": "bool"
+          },
+          {
             "name": "created_ts",
             "type": "i64"
           },

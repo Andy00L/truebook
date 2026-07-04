@@ -106,8 +106,11 @@ pub fn handler(ctx: Context<AuditTicket>, args: ValidateOddsArgs) -> Result<()> 
         ticket.audit_status = AuditStatus::Honest;
     } else {
         ticket.audit_status = AuditStatus::Violation;
-        // Only a live ticket can be moved to refundable.
-        if ticket.state == TicketState::Live {
+        // A proven overcharge makes the ticket refundable whether it is still live
+        // or was already settled to Lost, so a house that front-runs the audit with
+        // settle_ticket cannot dodge the refund. A Lost ticket was never paid (no
+        // double payout); a Won ticket already received its full winnings and is left.
+        if ticket.state == TicketState::Live || ticket.state == TicketState::Lost {
             ticket.state = TicketState::Refundable;
         }
     }

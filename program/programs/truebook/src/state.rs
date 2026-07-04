@@ -133,6 +133,10 @@ pub struct Ticket {
     pub potential_payout: u64,
     pub state: TicketState,
     pub audit_status: AuditStatus,
+    // True once this ticket's liability has been removed from house.open_exposure
+    // (at settle, or at the first refund). Prevents releasing the same liability
+    // twice when a settled-then-audited ticket is later refunded.
+    pub exposure_released: bool,
     pub created_ts: i64,
     pub nonce: u64,
     pub bump: u8,
