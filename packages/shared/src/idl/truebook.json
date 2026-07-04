@@ -1,0 +1,2286 @@
+{
+  "address": "59txn6d3rHFtvhocB5ZvhhJsTurGNq1d1gcbDy7o43fh",
+  "metadata": {
+    "name": "truebook",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "audit_ticket",
+      "discriminator": [
+        28,
+        152,
+        109,
+        76,
+        109,
+        236,
+        247,
+        246
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "house",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market"
+        },
+        {
+          "name": "ticket",
+          "writable": true
+        },
+        {
+          "name": "daily_odds_merkle_roots",
+          "docs": [
+            "PDA derived from the proof timestamp, and the CPI validates its data."
+          ]
+        },
+        {
+          "name": "txoracle_program",
+          "address": "6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ValidateOddsArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_market",
+      "discriminator": [
+        103,
+        226,
+        97,
+        235,
+        200,
+        188,
+        251,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "house",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "house"
+              },
+              {
+                "kind": "account",
+                "path": "house.market_count",
+                "account": "House"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "fixture_id",
+          "type": "i64"
+        },
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "MarketParams"
+            }
+          }
+        },
+        {
+          "name": "outcome_price_index",
+          "type": "u8"
+        },
+        {
+          "name": "kickoff_ts",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "deposit_liquidity",
+      "discriminator": [
+        245,
+        99,
+        59,
+        25,
+        151,
+        71,
+        233,
+        249
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "house",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "authority_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_house",
+      "discriminator": [
+        180,
+        46,
+        86,
+        125,
+        135,
+        107,
+        214,
+        28
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "house",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdt_mint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "house"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "margin_bps",
+          "type": "u16"
+        },
+        {
+          "name": "max_exposure_per_market",
+          "type": "u64"
+        },
+        {
+          "name": "max_payout_per_ticket",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "lock_market",
+      "discriminator": [
+        107,
+        8,
+        184,
+        91,
+        223,
+        13,
+        180,
+        38
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "market",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "place_bet",
+      "discriminator": [
+        222,
+        62,
+        67,
+        220,
+        63,
+        166,
+        126,
+        33
+      ],
+      "accounts": [
+        {
+          "name": "bettor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "house",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "ticket",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  99,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market"
+              },
+              {
+                "kind": "account",
+                "path": "bettor"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "bettor_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "side",
+          "type": {
+            "defined": {
+              "name": "Side"
+            }
+          }
+        },
+        {
+          "name": "stake",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "post_quote",
+      "discriminator": [
+        68,
+        231,
+        88,
+        224,
+        13,
+        116,
+        27,
+        84
+      ],
+      "accounts": [
+        {
+          "name": "keeper",
+          "signer": true
+        },
+        {
+          "name": "house",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "yes_odds_bps",
+          "type": "u32"
+        },
+        {
+          "name": "no_odds_bps",
+          "type": "u32"
+        },
+        {
+          "name": "odds_message_id",
+          "type": "string"
+        },
+        {
+          "name": "odds_ts",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "refund_ticket",
+      "discriminator": [
+        178,
+        97,
+        75,
+        218,
+        227,
+        28,
+        21,
+        73
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "house",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market"
+        },
+        {
+          "name": "ticket",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "bettor_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "settle_ticket",
+      "discriminator": [
+        201,
+        80,
+        119,
+        145,
+        208,
+        184,
+        168,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "house",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market"
+        },
+        {
+          "name": "verified_outcome",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  117,
+                  116,
+                  99,
+                  111,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ticket",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "bettor_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "verify_market",
+      "discriminator": [
+        117,
+        131,
+        234,
+        199,
+        26,
+        123,
+        63,
+        62
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "house",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "verified_outcome",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  117,
+                  116,
+                  99,
+                  111,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "daily_scores_merkle_roots",
+          "docs": [
+            "PDA derived from the proof timestamp, and the CPI itself validates its data."
+          ]
+        },
+        {
+          "name": "txoracle_program",
+          "address": "6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ValidateStatArgs"
+            }
+          }
+        },
+        {
+          "name": "seq",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "void_market",
+      "discriminator": [
+        243,
+        175,
+        46,
+        124,
+        95,
+        101,
+        39,
+        69
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "house",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw_liquidity",
+      "discriminator": [
+        149,
+        158,
+        33,
+        185,
+        47,
+        243,
+        253,
+        31
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "house",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "authority_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "House",
+      "discriminator": [
+        21,
+        145,
+        94,
+        109,
+        254,
+        199,
+        210,
+        151
+      ]
+    },
+    {
+      "name": "Market",
+      "discriminator": [
+        219,
+        190,
+        213,
+        55,
+        0,
+        227,
+        198,
+        154
+      ]
+    },
+    {
+      "name": "Ticket",
+      "discriminator": [
+        41,
+        228,
+        24,
+        165,
+        78,
+        90,
+        235,
+        200
+      ]
+    },
+    {
+      "name": "VerifiedOutcome",
+      "discriminator": [
+        60,
+        246,
+        53,
+        115,
+        50,
+        54,
+        80,
+        24
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "BetPlaced",
+      "discriminator": [
+        88,
+        88,
+        145,
+        226,
+        126,
+        206,
+        32,
+        0
+      ]
+    },
+    {
+      "name": "HouseInitialized",
+      "discriminator": [
+        208,
+        164,
+        111,
+        41,
+        25,
+        245,
+        243,
+        41
+      ]
+    },
+    {
+      "name": "LiquidityChanged",
+      "discriminator": [
+        132,
+        132,
+        193,
+        214,
+        12,
+        99,
+        40,
+        28
+      ]
+    },
+    {
+      "name": "MarketCreated",
+      "discriminator": [
+        88,
+        184,
+        130,
+        231,
+        226,
+        84,
+        6,
+        58
+      ]
+    },
+    {
+      "name": "MarketLocked",
+      "discriminator": [
+        57,
+        30,
+        242,
+        116,
+        238,
+        156,
+        185,
+        189
+      ]
+    },
+    {
+      "name": "MarketVerified",
+      "discriminator": [
+        253,
+        194,
+        174,
+        5,
+        12,
+        50,
+        68,
+        124
+      ]
+    },
+    {
+      "name": "MarketVoided",
+      "discriminator": [
+        217,
+        12,
+        138,
+        39,
+        108,
+        75,
+        89,
+        26
+      ]
+    },
+    {
+      "name": "QuotePosted",
+      "discriminator": [
+        130,
+        69,
+        35,
+        209,
+        183,
+        130,
+        239,
+        156
+      ]
+    },
+    {
+      "name": "TicketAudited",
+      "discriminator": [
+        142,
+        155,
+        242,
+        144,
+        246,
+        166,
+        170,
+        172
+      ]
+    },
+    {
+      "name": "TicketSettled",
+      "discriminator": [
+        72,
+        40,
+        13,
+        3,
+        184,
+        159,
+        190,
+        211
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "HousePaused",
+      "msg": "House is paused; no new bets accepted."
+    },
+    {
+      "code": 6001,
+      "name": "InvalidMargin",
+      "msg": "Margin basis points must be greater than zero and below 100 percent."
+    },
+    {
+      "code": 6002,
+      "name": "InvalidOdds",
+      "msg": "Odds must be strictly greater than 1.0 (10000 bps)."
+    },
+    {
+      "code": 6003,
+      "name": "ZeroStake",
+      "msg": "Stake must be greater than zero."
+    },
+    {
+      "code": 6004,
+      "name": "QuoteExpired",
+      "msg": "The served quote has expired; refresh it before betting."
+    },
+    {
+      "code": 6005,
+      "name": "MarketNotOpen",
+      "msg": "The market is not open for betting."
+    },
+    {
+      "code": 6006,
+      "name": "KickoffPassed",
+      "msg": "Kickoff has already passed for this market."
+    },
+    {
+      "code": 6007,
+      "name": "KickoffNotReached",
+      "msg": "Kickoff has not been reached yet; the market cannot be locked."
+    },
+    {
+      "code": 6008,
+      "name": "MarketNotLocked",
+      "msg": "The market is not locked."
+    },
+    {
+      "code": 6009,
+      "name": "OutcomeNotVerified",
+      "msg": "The market outcome has not been verified yet."
+    },
+    {
+      "code": 6010,
+      "name": "OutcomeAlreadyVerified",
+      "msg": "The market outcome has already been verified."
+    },
+    {
+      "code": 6011,
+      "name": "ExposureCapExceeded",
+      "msg": "Potential payout would exceed the house exposure cap for this market."
+    },
+    {
+      "code": 6012,
+      "name": "PayoutCapExceeded",
+      "msg": "Potential payout exceeds the per-ticket cap."
+    },
+    {
+      "code": 6013,
+      "name": "InsufficientLiquidity",
+      "msg": "The house vault has insufficient free liquidity to cover this payout."
+    },
+    {
+      "code": 6014,
+      "name": "WithdrawalBelowExposure",
+      "msg": "Withdrawal would drop the vault below its open exposure."
+    },
+    {
+      "code": 6015,
+      "name": "TicketAlreadySettled",
+      "msg": "The ticket has already been settled."
+    },
+    {
+      "code": 6016,
+      "name": "TicketMarketMismatch",
+      "msg": "The ticket does not belong to this market."
+    },
+    {
+      "code": 6017,
+      "name": "FixtureMismatch",
+      "msg": "The proof timestamp does not match the market fixture."
+    },
+    {
+      "code": 6018,
+      "name": "ValidationNoResult",
+      "msg": "The oracle validation returned no result."
+    },
+    {
+      "code": 6019,
+      "name": "OddsNotAuthentic",
+      "msg": "The referenced odds record could not be authenticated against consensus."
+    },
+    {
+      "code": 6020,
+      "name": "NoPriceViolation",
+      "msg": "The ticket price is within the stated margin; no violation to refund."
+    },
+    {
+      "code": 6021,
+      "name": "VoidGraceNotElapsed",
+      "msg": "The market grace period for voiding has not elapsed."
+    },
+    {
+      "code": 6022,
+      "name": "TicketNotRefundable",
+      "msg": "The ticket is not in a refundable state."
+    },
+    {
+      "code": 6023,
+      "name": "MathOverflow",
+      "msg": "Arithmetic overflow."
+    },
+    {
+      "code": 6024,
+      "name": "MessageIdTooLong",
+      "msg": "The provided odds MessageId exceeds the maximum stored length."
+    },
+    {
+      "code": 6025,
+      "name": "Unauthorized",
+      "msg": "Unauthorized: signer is not the house authority."
+    },
+    {
+      "code": 6026,
+      "name": "PredicateMismatch",
+      "msg": "The proof predicate does not match the market's committed predicate."
+    },
+    {
+      "code": 6027,
+      "name": "InvalidRootAccount",
+      "msg": "The provided daily-root account does not match the timestamp's expected PDA."
+    },
+    {
+      "code": 6028,
+      "name": "OddsRecordMismatch",
+      "msg": "The audited odds record does not match the ticket's referenced quote."
+    }
+  ],
+  "types": [
+    {
+      "name": "AuditStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unaudited"
+          },
+          {
+            "name": "Honest"
+          },
+          {
+            "name": "Violation"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetPlaced",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticket",
+            "type": "pubkey"
+          },
+          {
+            "name": "bettor",
+            "type": "pubkey"
+          },
+          {
+            "name": "side_is_yes",
+            "type": "bool"
+          },
+          {
+            "name": "stake",
+            "type": "u64"
+          },
+          {
+            "name": "quoted_odds_bps",
+            "type": "u32"
+          },
+          {
+            "name": "potential_payout",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BinaryOp",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "None"
+          },
+          {
+            "name": "Add"
+          },
+          {
+            "name": "Subtract"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Comparison",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "GreaterThan"
+          },
+          {
+            "name": "LessThan"
+          },
+          {
+            "name": "EqualTo"
+          }
+        ]
+      }
+    },
+    {
+      "name": "House",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "usdt_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "margin_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_exposure_per_market",
+            "type": "u64"
+          },
+          {
+            "name": "max_payout_per_ticket",
+            "type": "u64"
+          },
+          {
+            "name": "open_exposure",
+            "type": "u64"
+          },
+          {
+            "name": "total_volume",
+            "type": "u64"
+          },
+          {
+            "name": "market_count",
+            "type": "u64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HouseInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "usdt_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "margin_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LiquidityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "house",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit",
+            "type": "bool"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "new_vault_balance",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Market",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "house",
+            "type": "pubkey"
+          },
+          {
+            "name": "market_id",
+            "type": "u64"
+          },
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "params",
+            "type": {
+              "defined": {
+                "name": "MarketParams"
+              }
+            }
+          },
+          {
+            "name": "outcome_price_index",
+            "type": "u8"
+          },
+          {
+            "name": "kickoff_ts",
+            "type": "i64"
+          },
+          {
+            "name": "state",
+            "type": {
+              "defined": {
+                "name": "MarketState"
+              }
+            }
+          },
+          {
+            "name": "yes_odds_bps",
+            "type": "u32"
+          },
+          {
+            "name": "no_odds_bps",
+            "type": "u32"
+          },
+          {
+            "name": "odds_message_id",
+            "type": "string"
+          },
+          {
+            "name": "odds_ts",
+            "type": "i64"
+          },
+          {
+            "name": "quote_posted_ts",
+            "type": "i64"
+          },
+          {
+            "name": "yes_stake",
+            "type": "u64"
+          },
+          {
+            "name": "no_stake",
+            "type": "u64"
+          },
+          {
+            "name": "yes_payout",
+            "type": "u64"
+          },
+          {
+            "name": "no_payout",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "market_id",
+            "type": "u64"
+          },
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "kickoff_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketLocked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "locked_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "stat_a_key",
+            "type": "u32"
+          },
+          {
+            "name": "stat_a_period",
+            "type": "i32"
+          },
+          {
+            "name": "stat_b_key",
+            "type": "u32"
+          },
+          {
+            "name": "stat_b_period",
+            "type": "i32"
+          },
+          {
+            "name": "has_stat_b",
+            "type": "bool"
+          },
+          {
+            "name": "op",
+            "type": {
+              "defined": {
+                "name": "BinaryOp"
+              }
+            }
+          },
+          {
+            "name": "comparison",
+            "type": {
+              "defined": {
+                "name": "Comparison"
+              }
+            }
+          },
+          {
+            "name": "threshold",
+            "type": "i32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Locked"
+          },
+          {
+            "name": "Verified"
+          },
+          {
+            "name": "Settled"
+          },
+          {
+            "name": "Voided"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketVerified",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "outcome",
+            "type": "bool"
+          },
+          {
+            "name": "seq",
+            "type": "u32"
+          },
+          {
+            "name": "verified_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketVoided",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "voided_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuotePosted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes_odds_bps",
+            "type": "u32"
+          },
+          {
+            "name": "no_odds_bps",
+            "type": "u32"
+          },
+          {
+            "name": "odds_message_id",
+            "type": "string"
+          },
+          {
+            "name": "odds_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Side",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Yes"
+          },
+          {
+            "name": "No"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ticket",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "bettor",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          },
+          {
+            "name": "stake",
+            "type": "u64"
+          },
+          {
+            "name": "quoted_odds_bps",
+            "type": "u32"
+          },
+          {
+            "name": "odds_message_id",
+            "type": "string"
+          },
+          {
+            "name": "odds_ts",
+            "type": "i64"
+          },
+          {
+            "name": "potential_payout",
+            "type": "u64"
+          },
+          {
+            "name": "state",
+            "type": {
+              "defined": {
+                "name": "TicketState"
+              }
+            }
+          },
+          {
+            "name": "audit_status",
+            "type": {
+              "defined": {
+                "name": "AuditStatus"
+              }
+            }
+          },
+          {
+            "name": "created_ts",
+            "type": "i64"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TicketAudited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticket",
+            "type": "pubkey"
+          },
+          {
+            "name": "authentic",
+            "type": "bool"
+          },
+          {
+            "name": "violation",
+            "type": "bool"
+          },
+          {
+            "name": "served_implied_bps",
+            "type": "u32"
+          },
+          {
+            "name": "consensus_implied_bps",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TicketSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticket",
+            "type": "pubkey"
+          },
+          {
+            "name": "bettor",
+            "type": "pubkey"
+          },
+          {
+            "name": "won",
+            "type": "bool"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TicketState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Live"
+          },
+          {
+            "name": "Won"
+          },
+          {
+            "name": "Lost"
+          },
+          {
+            "name": "Claimed"
+          },
+          {
+            "name": "Refundable"
+          },
+          {
+            "name": "Refunded"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TxBinaryExpression",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Add"
+          },
+          {
+            "name": "Subtract"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TxComparison",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "GreaterThan"
+          },
+          {
+            "name": "LessThan"
+          },
+          {
+            "name": "EqualTo"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TxOdds",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "message_id",
+            "type": "string"
+          },
+          {
+            "name": "ts",
+            "type": "i64"
+          },
+          {
+            "name": "bookmaker",
+            "type": "string"
+          },
+          {
+            "name": "bookmaker_id",
+            "type": "i32"
+          },
+          {
+            "name": "super_odds_type",
+            "type": "string"
+          },
+          {
+            "name": "game_state",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "in_running",
+            "type": "bool"
+          },
+          {
+            "name": "market_parameters",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "market_period",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "price_names",
+            "type": {
+              "vec": "string"
+            }
+          },
+          {
+            "name": "prices",
+            "type": {
+              "vec": "i32"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TxOddsBatchSummary",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "update_stats",
+            "type": {
+              "defined": {
+                "name": "TxOddsUpdateStats"
+              }
+            }
+          },
+          {
+            "name": "odds_sub_tree_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TxOddsUpdateStats",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "update_count",
+            "type": "u32"
+          },
+          {
+            "name": "min_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "max_timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TxProofNode",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "is_right_sibling",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TxScoreStat",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "type": "u32"
+          },
+          {
+            "name": "value",
+            "type": "i32"
+          },
+          {
+            "name": "period",
+            "type": "i32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TxScoresBatchSummary",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "update_stats",
+            "type": {
+              "defined": {
+                "name": "TxScoresUpdateStats"
+              }
+            }
+          },
+          {
+            "name": "events_sub_tree_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TxScoresUpdateStats",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "update_count",
+            "type": "i32"
+          },
+          {
+            "name": "min_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "max_timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TxStatTerm",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "stat_to_prove",
+            "type": {
+              "defined": {
+                "name": "TxScoreStat"
+              }
+            }
+          },
+          {
+            "name": "event_stat_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "stat_proof",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "TxProofNode"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TxTraderPredicate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "threshold",
+            "type": "i32"
+          },
+          {
+            "name": "comparison",
+            "type": {
+              "defined": {
+                "name": "TxComparison"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ValidateOddsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ts",
+            "type": "i64"
+          },
+          {
+            "name": "odds_snapshot",
+            "type": {
+              "defined": {
+                "name": "TxOdds"
+              }
+            }
+          },
+          {
+            "name": "summary",
+            "type": {
+              "defined": {
+                "name": "TxOddsBatchSummary"
+              }
+            }
+          },
+          {
+            "name": "sub_tree_proof",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "TxProofNode"
+                }
+              }
+            }
+          },
+          {
+            "name": "main_tree_proof",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "TxProofNode"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ValidateStatArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ts",
+            "type": "i64"
+          },
+          {
+            "name": "fixture_summary",
+            "type": {
+              "defined": {
+                "name": "TxScoresBatchSummary"
+              }
+            }
+          },
+          {
+            "name": "fixture_proof",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "TxProofNode"
+                }
+              }
+            }
+          },
+          {
+            "name": "main_tree_proof",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "TxProofNode"
+                }
+              }
+            }
+          },
+          {
+            "name": "predicate",
+            "type": {
+              "defined": {
+                "name": "TxTraderPredicate"
+              }
+            }
+          },
+          {
+            "name": "stat_a",
+            "type": {
+              "defined": {
+                "name": "TxStatTerm"
+              }
+            }
+          },
+          {
+            "name": "stat_b",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "TxStatTerm"
+                }
+              }
+            }
+          },
+          {
+            "name": "op",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "TxBinaryExpression"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifiedOutcome",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "outcome",
+            "type": "bool"
+          },
+          {
+            "name": "seq",
+            "type": "u32"
+          },
+          {
+            "name": "verified_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "HOUSE_SEED",
+      "type": "bytes",
+      "value": "[104, 111, 117, 115, 101]"
+    },
+    {
+      "name": "MARKET_SEED",
+      "type": "bytes",
+      "value": "[109, 97, 114, 107, 101, 116]"
+    },
+    {
+      "name": "OUTCOME_SEED",
+      "type": "bytes",
+      "value": "[111, 117, 116, 99, 111, 109, 101]"
+    },
+    {
+      "name": "TICKET_SEED",
+      "type": "bytes",
+      "value": "[116, 105, 99, 107, 101, 116]"
+    },
+    {
+      "name": "TXLINE_DAILY_BATCH_SEED",
+      "type": "bytes",
+      "value": "[100, 97, 105, 108, 121, 95, 98, 97, 116, 99, 104, 95, 114, 111, 111, 116, 115]"
+    },
+    {
+      "name": "TXLINE_DAILY_SCORES_SEED",
+      "type": "bytes",
+      "value": "[100, 97, 105, 108, 121, 95, 115, 99, 111, 114, 101, 115, 95, 114, 111, 111, 116, 115]"
+    },
+    {
+      "name": "TXLINE_PROGRAM_ID",
+      "type": "pubkey",
+      "value": "6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J"
+    },
+    {
+      "name": "VAULT_SEED",
+      "type": "bytes",
+      "value": "[118, 97, 117, 108, 116]"
+    }
+  ]
+}

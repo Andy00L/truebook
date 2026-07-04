@@ -83,9 +83,18 @@ export type FixtureSnapshot = {
   Participant1: string;
   Participant2: string;
   Participant1IsHome: boolean;
-  StartTime: string;
+  // Kickoff as epoch milliseconds (the devnet feed returns a number, not ISO).
+  StartTime: number | string;
   CompetitionId?: number;
 };
+
+// Normalize a fixture StartTime (epoch ms number, numeric string, or ISO) to ms.
+export function fixtureStartMs(startTime: number | string): number {
+  if (typeof startTime === "number") return startTime;
+  const asNumber = Number(startTime);
+  if (Number.isFinite(asNumber)) return asNumber;
+  return new Date(startTime).getTime();
+}
 
 // A scores snapshot row from GET /api/scores/snapshot/{fixtureId}.
 export type ScoresSnapshotRow = {
