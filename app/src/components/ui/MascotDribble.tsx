@@ -64,7 +64,6 @@ type MascotDribbleProps = {
 export function MascotDribble({ scale = 1 }: MascotDribbleProps) {
   const spriteWidth = 14 * PIXEL_SIZE + 6 + 4 * PIXEL_SIZE + 4;
   const spriteHeight = 9 * PIXEL_SIZE + 26;
-  const dribbleDuration = "0.9s";
 
   return (
     <div
@@ -89,13 +88,13 @@ export function MascotDribble({ scale = 1 }: MascotDribbleProps) {
           width={14 * PIXEL_SIZE}
           height={9 * PIXEL_SIZE}
           viewBox={`0 0 ${14 * PIXEL_SIZE} ${9 * PIXEL_SIZE}`}
+          className="animate-mascot-bob"
           style={{
             position: "absolute",
             left: 0,
             bottom: 0,
             display: "block",
             shapeRendering: "crispEdges",
-            animation: `mascot-bob ${dribbleDuration} var(--ease-standard) infinite`,
           }}
         >
           {buildPixelRects(MASCOT_ROWS, MASCOT_PIGMENTS)}
@@ -104,17 +103,13 @@ export function MascotDribble({ scale = 1 }: MascotDribbleProps) {
           </g>
           <g
             transform={`translate(0, ${8 * PIXEL_SIZE})`}
-            style={{
-              animation: `mascot-kick-down ${dribbleDuration} steps(1, end) infinite`,
-            }}
+            className="animate-mascot-kick-down"
           >
             {buildPixelRects(FOOT_DOWN_ROW, MASCOT_PIGMENTS)}
           </g>
           <g
             transform={`translate(0, ${7 * PIXEL_SIZE})`}
-            style={{
-              animation: `mascot-kick-up ${dribbleDuration} steps(1, end) infinite`,
-            }}
+            className="animate-mascot-kick-up"
           >
             {buildPixelRects(FOOT_KICK_ROW, MASCOT_PIGMENTS)}
           </g>
@@ -123,6 +118,7 @@ export function MascotDribble({ scale = 1 }: MascotDribbleProps) {
           width={4 * PIXEL_SIZE}
           height={4 * PIXEL_SIZE}
           viewBox={`0 0 ${4 * PIXEL_SIZE} ${4 * PIXEL_SIZE}`}
+          className="animate-mascot-ball"
           style={{
             position: "absolute",
             left: 68,
@@ -130,7 +126,6 @@ export function MascotDribble({ scale = 1 }: MascotDribbleProps) {
             display: "block",
             shapeRendering: "crispEdges",
             transformOrigin: "center bottom",
-            animation: `mascot-ball ${dribbleDuration} infinite`,
           }}
         >
           {buildPixelRects(BALL_ROWS, { x: "var(--color-accent)" })}

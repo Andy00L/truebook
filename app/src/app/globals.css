@@ -70,6 +70,12 @@
   --animate-live-dot: live-dot 2s var(--ease-standard) infinite;
   --animate-confirm-dot: live-dot 1s var(--ease-standard) infinite;
 
+  /* Mascot dribble (the empty-state motif); one shared 0.9s cycle */
+  --animate-mascot-bob: mascot-bob 0.9s var(--ease-standard) infinite;
+  --animate-mascot-ball: mascot-ball 0.9s infinite;
+  --animate-mascot-kick-down: mascot-kick-down 0.9s steps(1, end) infinite;
+  --animate-mascot-kick-up: mascot-kick-up 0.9s steps(1, end) infinite;
+
   @keyframes card-in {
     from {
       opacity: 0;
@@ -127,49 +133,49 @@
     }
   }
 
-  /* Mascot dribble frames (the empty-state motif from the design session) */
+  /* Mascot dribble frames, emitted through the animate-mascot-* tokens */
   @keyframes mascot-bob {
-    0%,
-    40%,
-    70%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(2px);
-    }
+  0%,
+  40%,
+  70%,
+  100% {
+    transform: translateY(0);
   }
-  @keyframes mascot-ball {
-    0% {
-      transform: translateY(0) scale(1, 1);
-      animation-timing-function: var(--ease-exit);
-    }
-    45% {
-      transform: translateY(28px) scale(1, 1);
-      animation-timing-function: linear;
-    }
-    50% {
-      transform: translateY(28px) scale(1.2, 0.8);
-      animation-timing-function: linear;
-    }
-    55% {
-      transform: translateY(28px) scale(1, 1);
-      animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
-    }
-    100% {
-      transform: translateY(0) scale(1, 1);
-    }
+  50% {
+    transform: translateY(2px);
   }
-  @keyframes mascot-kick-down {
-    0%,
-    60%,
-    100% {
-      opacity: 1;
-    }
-    40% {
-      opacity: 0;
-    }
+}
+@keyframes mascot-ball {
+  0% {
+    transform: translateY(0) scale(1, 1);
+    animation-timing-function: var(--ease-exit);
   }
+  45% {
+    transform: translateY(28px) scale(1, 1);
+    animation-timing-function: linear;
+  }
+  50% {
+    transform: translateY(28px) scale(1.2, 0.8);
+    animation-timing-function: linear;
+  }
+  55% {
+    transform: translateY(28px) scale(1, 1);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+}
+@keyframes mascot-kick-down {
+  0%,
+  60%,
+  100% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0;
+  }
+}
   @keyframes mascot-kick-up {
     0%,
     60%,
