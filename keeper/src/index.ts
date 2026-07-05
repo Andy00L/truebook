@@ -1,5 +1,6 @@
 // TrueBook keeper entry point. Commands:
 //   setup                initialize the house (one time, by the operator)
+//   fund [amount]        faucet test USDT then deposit into the house vault
 //   tick (default)       create markets, lock due ones, refresh quotes from TxLINE
 //   settle <market>      prove a locked market's outcome and pay its tickets
 //   rig <market> [factor] post one overcharged NO quote for the sting demo
@@ -8,6 +9,7 @@ import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import { USDT_MINT_DEVNET } from "@truebook/shared";
 import { buildProgram, getConnection, loadKeeperKeypair } from "./env.js";
+import { fundHouseVault } from "./fund.js";
 import { acquireTxlineAuth } from "./txlineAuth.js";
 import {
   createMarketsForFixtures,
@@ -79,10 +81,29 @@ async function runTickOrSettle(command: string, marketArg: string | undefined): 
   console.log(`[main] tick: +${createdCount} markets, ${lockedCount} locked, ${quotedCount} quoted`);
 }
 
+async function runFund(amountArg: string | undefined): Promise<void> {
+  const connection = getConnection();
+  const keypair = loadKeeperKeypair();
+  const program = buildProgram(connection, keypair);
+  let depositUiAmount: number | null = null;
+  if (amountArg !== undefined) {
+    depositUiAmount = Number(amountArg);
+    if (!Number.isFinite(depositUiAmount) || depositUiAmount <= 0) {
+      console.error("[runFund] usage: fund [amountUsdt > 0]");
+      process.exit(1);
+    }
+  }
+  await fundHouseVault(program, keypair, depositUiAmount);
+}
+
 async function main(): Promise<void> {
   const command = process.argv[2] ?? "tick";
   if (command === "setup") {
     await runSetup();
+    return;
+  }
+  if (command === "fund") {
+    await runFund(process.argv[3]);
     return;
   }
   // tick, settle, and rig all authenticate to TxLINE first.

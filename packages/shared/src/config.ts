@@ -20,6 +20,12 @@ export const SEED_DAILY_BATCH_ROOTS = "daily_batch_roots" as const;
 export const SEED_PRICING_MATRIX = "pricing_matrix" as const;
 export const SEED_TOKEN_TREASURY_V2 = "token_treasury_v2" as const;
 
+// USDT faucet seeds (request_devnet_faucet). The IDL omits them; discovered
+// on 2026-07-05 by devnet simulation: "usdt_treasury" derives to the USDT
+// mint authority, and ["faucet_tracker", user] passes the seeds constraint.
+export const SEED_USDT_TREASURY = "usdt_treasury" as const;
+export const SEED_FAUCET_TRACKER = "faucet_tracker" as const;
+
 // Free World Cup + International Friendlies tier on devnet (60-second delay).
 // sourceRef: documentation/subscription-tiers (devnet single tier).
 export const SERVICE_LEVEL_ID_WORLD_CUP_FREE = 1 as const;
