@@ -7,7 +7,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./config": "./src/config.ts",
-    "./idl/txoracle": "./src/idl/txoracle-devnet.json"
+    "./idl/txoracle": "./src/idl/txoracle-devnet.json",
+    "./idl/truebook.json": "./src/idl/truebook.json",
+    "./idl/truebook-type": "./src/idl/truebook.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

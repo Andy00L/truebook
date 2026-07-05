@@ -1,4 +1,8 @@
-import { LobbyScreen, type LobbyScreenView } from "@/components/lobby/LobbyScreen";
+import {
+  LobbyScreen,
+  type LobbyDataSource,
+  type LobbyScreenView,
+} from "@/components/lobby/LobbyScreen";
 
 type LobbyPageProps = {
   searchParams: Promise<{ view?: string | string[]; faucet?: string | string[] }>;
@@ -27,10 +31,14 @@ function parseInitialView(
 export default async function LobbyPage({ searchParams }: LobbyPageProps) {
   const { view, faucet } = await searchParams;
   const faucetValue = Array.isArray(faucet) ? faucet[0] : faucet;
+  // Flip to the live devnet board with NEXT_PUBLIC_DATA_SOURCE=chain.
+  const dataSource: LobbyDataSource =
+    process.env.NEXT_PUBLIC_DATA_SOURCE === "chain" ? "chain" : "demo";
   return (
     <LobbyScreen
       initialView={parseInitialView(view)}
       judgeFaucetFails={faucetValue === "fail"}
+      dataSource={dataSource}
     />
   );
 }

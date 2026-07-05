@@ -24,6 +24,8 @@ export type OutcomeQuote = {
 export type MarketView = {
   /** Stable key inside the fixture, e.g. "1x2", "totals", "corners". */
   marketKey: string;
+  /** On-chain market account address; present when the source is devnet. */
+  marketAddress?: string;
   name: string;
   /** Eyebrow group label on the card: "1x2", "totals", "corners", "goals". */
   groupLabel: string;

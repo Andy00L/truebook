@@ -80,15 +80,32 @@ export async function createMarketsForFixtures(
   return createdCount;
 }
 
+// Markets the tick must never re-quote, so a rigged sting quote survives
+// until someone bets on it. Comma-separated pubkeys.
+function riggedMarketsToSkip(): Set<string> {
+  const rawList = process.env.KEEPER_RIG_SKIP ?? "";
+  return new Set(
+    rawList
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0),
+  );
+}
+
 export async function postQuotes(program: Program<Truebook>, auth: TxlineAuth): Promise<number> {
   const houseInfo = await fetchHouse(program);
   if (!houseInfo) return 0;
   const marginBps = houseInfo.account.marginBps;
   const markets = await program.account.market.all();
+  const skippedMarkets = riggedMarketsToSkip();
 
   let quotedCount = 0;
   for (const { publicKey: marketKey, account } of markets) {
     if (!("open" in account.state)) continue;
+    if (skippedMarkets.has(marketKey.toBase58())) {
+      console.log(`[postQuotes] skipping rigged market ${marketKey.toBase58()}`);
+      continue;
+    }
     const oddsResult = await getOddsUpdates(auth, account.fixtureId.toNumber());
     if (!oddsResult.ok) continue;
     const record = oddsResult.value.find((entry) => entry.SuperOddsType === HOME_WIN.superOddsType);
