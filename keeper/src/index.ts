@@ -1,6 +1,7 @@
 // TrueBook keeper entry point. Commands:
 //   setup                initialize the house (one time, by the operator)
 //   fund [amount]        faucet test USDT then deposit into the house vault
+//   list                 print house figures and every market with its pubkey
 //   tick (default)       create markets, lock due ones, refresh quotes from TxLINE
 //   settle <market>      prove a locked market's outcome and pay its tickets
 //   rig <market> [factor] post one overcharged NO quote for the sting demo
@@ -10,6 +11,7 @@ import { BN } from "@coral-xyz/anchor";
 import { USDT_MINT_DEVNET } from "@truebook/shared";
 import { buildProgram, getConnection, loadKeeperKeypair } from "./env.js";
 import { fundHouseVault } from "./fund.js";
+import { listBoard } from "./list.js";
 import { acquireTxlineAuth } from "./txlineAuth.js";
 import {
   createMarketsForFixtures,
@@ -104,6 +106,12 @@ async function main(): Promise<void> {
   }
   if (command === "fund") {
     await runFund(process.argv[3]);
+    return;
+  }
+  if (command === "list") {
+    const connection = getConnection();
+    const keypair = loadKeeperKeypair();
+    await listBoard(buildProgram(connection, keypair));
     return;
   }
   // tick, settle, and rig all authenticate to TxLINE first.
