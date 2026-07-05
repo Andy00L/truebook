@@ -15,7 +15,14 @@ export type SlipQuote = {
   servedOdds: number;
   consensusOdds: number;
   marginLabel: string;
+  /** Present when the quote comes from a live devnet market. */
+  marketAddress?: string;
+  side?: "yes" | "no";
 };
+
+export type PlaceBetResult =
+  | { ok: true; signature: string }
+  | { ok: false; reason: string };
 
 type PlacementStatus = "pending" | "confirmed";
 
@@ -24,6 +31,8 @@ type BetSlipProps = {
   onClose: () => void;
   /** Re-snapshots the quote at the current served price. */
   onRefreshQuote: () => void;
+  /** Real on-chain placement; when absent the slip runs the demo flow. */
+  onPlaceBet?: (stakeAmount: number) => Promise<PlaceBetResult>;
 };
 
 /**
@@ -38,12 +47,19 @@ const DEMO_CONFIRM_MS = 1400;
  * Demo placement flow; the chain provider will swap the fake confirm for a
  * real place_bet transaction without touching this layout.
  */
-export function BetSlip({ quote, onClose, onRefreshQuote }: BetSlipProps) {
+export function BetSlip({
+  quote,
+  onClose,
+  onRefreshQuote,
+  onPlaceBet,
+}: BetSlipProps) {
   const [stakeText, setStakeText] = useState("");
   const [quoteSecondsLeft, setQuoteSecondsLeft] = useState(
     QUOTE_VALIDITY_SECONDS,
   );
   const [placement, setPlacement] = useState<PlacementStatus | null>(null);
+  const [betSignature, setBetSignature] = useState<string | null>(null);
+  const [placeError, setPlaceError] = useState<string | null>(null);
   const confirmTimerRef = useRef<number | null>(null);
 
   // Reset the countdown whenever a fresh quote snapshot arrives (the React
@@ -91,16 +107,28 @@ export function BetSlip({ quote, onClose, onRefreshQuote }: BetSlipProps) {
   const isQuoteExpired = quoteSecondsLeft <= 0;
   const canPlaceBet = stakeAmount > 0 && !isQuoteExpired && placement === null;
 
-  const handlePlaceBet = () => {
+  const handlePlaceBet = async () => {
     if (!canPlaceBet) {
       return;
     }
+    setPlaceError(null);
     setPlacement("pending");
-    confirmTimerRef.current = window.setTimeout(() => {
-      setPlacement((currentStatus) =>
-        currentStatus === "pending" ? "confirmed" : currentStatus,
-      );
-    }, DEMO_CONFIRM_MS);
+    if (!onPlaceBet) {
+      confirmTimerRef.current = window.setTimeout(() => {
+        setPlacement((currentStatus) =>
+          currentStatus === "pending" ? "confirmed" : currentStatus,
+        );
+      }, DEMO_CONFIRM_MS);
+      return;
+    }
+    const placeResult = await onPlaceBet(stakeAmount);
+    if (placeResult.ok) {
+      setBetSignature(placeResult.signature);
+      setPlacement("confirmed");
+    } else {
+      setPlacement(null);
+      setPlaceError(placeResult.reason);
+    }
   };
 
   return (
@@ -203,6 +231,17 @@ export function BetSlip({ quote, onClose, onRefreshQuote }: BetSlipProps) {
               Place bet
             </Button>
 
+            {placeError ? (
+              <p
+                role="alert"
+                className="mt-3 font-mono text-xs leading-relaxed text-danger"
+              >
+                {placeError.length > 160
+                  ? `${placeError.slice(0, 160)}…`
+                  : placeError}
+              </p>
+            ) : null}
+
             <p className="mt-3 font-mono text-2xs leading-relaxed tabular-nums text-ink-faint">
               consensus {formatOdds(quote.consensusOdds)} - margin{" "}
               {quote.marginLabel} = your price {formatOdds(quote.servedOdds)} ·
@@ -239,15 +278,23 @@ export function BetSlip({ quote, onClose, onRefreshQuote }: BetSlipProps) {
               </div>
               <div className="mb-2.5 mt-3.5 border-t border-dashed border-border" />
               <div className="flex flex-col gap-1">
-                <HashRow
-                  label="quote id"
-                  value={DEMO_QUOTE_ID}
-                  labelWidthClass="w-20"
-                />
+                {quote.marketAddress ? (
+                  <HashRow
+                    label="market"
+                    value={quote.marketAddress}
+                    labelWidthClass="w-20"
+                  />
+                ) : (
+                  <HashRow
+                    label="quote id"
+                    value={DEMO_QUOTE_ID}
+                    labelWidthClass="w-20"
+                  />
+                )}
                 <HashRow
                   label="bet tx"
-                  value={DEMO_BET_TX}
-                  href={explorerTxUrl(DEMO_BET_TX)}
+                  value={betSignature ?? DEMO_BET_TX}
+                  href={explorerTxUrl(betSignature ?? DEMO_BET_TX)}
                   labelWidthClass="w-20"
                 />
               </div>

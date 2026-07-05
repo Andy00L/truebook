@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { MascotDribble } from "@/components/ui/MascotDribble";
+import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 
 type LobbyHeaderProps = {
   onJudgeToggle: () => void;
+  /** Chain source shows the wallet control; the demo stays wallet-free. */
+  withWallet?: boolean;
 };
 
 /** The front-door header: mark, judge mode entry, nav, and the tagline. */
-export function LobbyHeader({ onJudgeToggle }: LobbyHeaderProps) {
+export function LobbyHeader({ onJudgeToggle, withWallet = false }: LobbyHeaderProps) {
   return (
     <header className="flex items-center justify-between gap-4 pb-5 pt-1">
       <div className="flex items-center gap-3">
@@ -16,6 +19,7 @@ export function LobbyHeader({ onJudgeToggle }: LobbyHeaderProps) {
         </span>
       </div>
       <div className="flex items-center gap-4">
+        {withWallet ? <ConnectWalletButton /> : null}
         <button
           type="button"
           onClick={onJudgeToggle}

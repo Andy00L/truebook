@@ -14,6 +14,8 @@ type BreadcrumbProps = {
   withMascot?: boolean;
   /** Right-aligned eyebrow, e.g. the product tagline. */
   tagline?: string;
+  /** Right-aligned controls, e.g. the wallet button on chain screens. */
+  actions?: React.ReactNode;
 };
 
 /** Top-of-page trail: the TrueBook mark, then the path to this screen. */
@@ -21,6 +23,7 @@ export function Breadcrumb({
   segments,
   withMascot = false,
   tagline,
+  actions,
 }: BreadcrumbProps) {
   return (
     <nav
@@ -55,11 +58,14 @@ export function Breadcrumb({
           </Fragment>
         ))}
       </div>
-      {tagline ? (
-        <span className="eyebrow hidden text-ink-faint md:inline">
-          {tagline}
-        </span>
-      ) : null}
+      <div className="flex items-center gap-4">
+        {tagline ? (
+          <span className="eyebrow hidden text-ink-faint md:inline">
+            {tagline}
+          </span>
+        ) : null}
+        {actions ?? null}
+      </div>
     </nav>
   );
 }

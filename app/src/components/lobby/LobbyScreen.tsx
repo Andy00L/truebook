@@ -63,6 +63,7 @@ export function LobbyScreen({
     <PageShell>
       <LobbyHeader
         onJudgeToggle={() => setIsJudgeOpen((wasOpen) => !wasOpen)}
+        withWallet={isChainSource}
       />
 
       {isJudgeOpen ? (

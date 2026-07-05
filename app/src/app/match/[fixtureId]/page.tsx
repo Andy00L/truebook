@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
-import { MatchScreen } from "@/components/match/MatchScreen";
+import {
+  MatchScreen,
+  type MatchDataSource,
+} from "@/components/match/MatchScreen";
 import { getDemoFixture } from "@/lib/data/demoFixtures";
+import { getFixtureNames } from "@/lib/chain/fixtureNames";
 import type { MatchScreenView } from "@/lib/data/useDemoMatch";
 
 type MatchPageProps = {
@@ -32,10 +36,14 @@ export async function generateMetadata({
   params,
 }: MatchPageProps): Promise<Metadata> {
   const { fixtureId } = await params;
-  const fixture = getDemoFixture(fixtureId);
+  const demoFixture = getDemoFixture(fixtureId);
+  if (demoFixture) {
+    return { title: `${demoFixture.homeTeam} vs ${demoFixture.awayTeam}` };
+  }
+  const chainNames = getFixtureNames(fixtureId);
   return {
-    title: fixture
-      ? `${fixture.homeTeam} vs ${fixture.awayTeam}`
+    title: chainNames.awayTeam
+      ? `${chainNames.homeTeam} vs ${chainNames.awayTeam}`
       : "Match",
   };
 }
@@ -46,7 +54,14 @@ export default async function MatchPage({
 }: MatchPageProps) {
   const { fixtureId } = await params;
   const { view } = await searchParams;
+  // Flip to the live devnet market with NEXT_PUBLIC_DATA_SOURCE=chain.
+  const dataSource: MatchDataSource =
+    process.env.NEXT_PUBLIC_DATA_SOURCE === "chain" ? "chain" : "demo";
   return (
-    <MatchScreen fixtureId={fixtureId} initialView={parseInitialView(view)} />
+    <MatchScreen
+      fixtureId={fixtureId}
+      initialView={parseInitialView(view)}
+      dataSource={dataSource}
+    />
   );
 }
