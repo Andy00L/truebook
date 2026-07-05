@@ -70,6 +70,7 @@ export function LobbyScreen({
         <JudgePanel
           onClose={() => setIsJudgeOpen(false)}
           faucetFails={judgeFaucetFails}
+          dataSource={dataSource}
         />
       ) : null}
 
