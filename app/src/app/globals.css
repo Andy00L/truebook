@@ -1,26 +1,295 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * TrueBook token sheet, wired as the Tailwind v4 theme.
+ * sourceRef: docs/UI_DESIGN_SYSTEM.md (the single source of truth; if this
+ * file and the sheet ever differ, the sheet wins).
+ */
+@theme {
+  /* Palette (seven roles plus variants) */
+  --color-field: #0b0e11;
+  --color-surface: #12161b;
+  --color-elevated: #171c22;
+  --color-border: #1e242b;
+  --color-ink: #e8ecf1;
+  --color-ink-muted: #8a94a3;
+  --color-ink-faint: #566072;
+  --color-accent: #00e676;
+  --color-accent-soft: rgba(0, 230, 118, 0.12);
+  --color-accent-deep: #00a050;
+  --color-on-accent: #04120a;
+  --color-amber: #f5a623;
+  --color-danger: #ff5252;
+  --color-danger-soft: rgba(255, 82, 82, 0.12);
+  --color-scrim: rgba(11, 14, 17, 0.55);
+
+  /* Shape: radii 8 (chips, inputs), 12 (cards, buttons), 16 (dialogs, slip) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Type scale, dense workstation steps: 11 12 13 14 16 20 28 40 */
+  --text-2xs: 11px;
+  --text-2xs--line-height: 16px;
+  --text-xs: 12px;
+  --text-xs--line-height: 18px;
+  --text-sm: 13px;
+  --text-sm--line-height: 20px;
+  --text-base: 14px;
+  --text-base--line-height: 22px;
+  --text-lg: 16px;
+  --text-lg--line-height: 24px;
+  --text-xl: 20px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 34px;
+  --text-4xl: 40px;
+  --text-4xl--line-height: 44px;
+
+  /* Content width: 1200 to 1440; the exports settled on 1320 */
+  --container-shell: 1320px;
+
+  /* Depth: elevation carried by surface shift and border, shadows subtle */
+  --shadow-card:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.32);
+  --shadow-elevated:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 4px rgba(0, 0, 0, 0.45),
+    0 16px 40px rgba(0, 0, 0, 0.4);
+
+  /* Motion: enter 200ms, exit 160ms, stagger 40ms */
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --animate-card-in: card-in 200ms var(--ease-enter) both;
+  --animate-fade-in: fade-in 200ms var(--ease-enter) both;
+  --animate-slip-in: slip-in 200ms var(--ease-enter) both;
+  --animate-slip-up: slip-up 200ms var(--ease-enter) both;
+  --animate-skeleton: skeleton-pulse 1.6s var(--ease-standard) infinite;
+  --animate-live-dot: live-dot 2s var(--ease-standard) infinite;
+  --animate-confirm-dot: live-dot 1s var(--ease-standard) infinite;
+
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes slip-in {
+    from {
+      opacity: 0;
+      transform: translateX(24px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes slip-up {
+    from {
+      opacity: 0;
+      transform: translateY(32px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes live-dot {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  /* Mascot dribble frames (the empty-state motif from the design session) */
+  @keyframes mascot-bob {
+    0%,
+    40%,
+    70%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(2px);
+    }
+  }
+  @keyframes mascot-ball {
+    0% {
+      transform: translateY(0) scale(1, 1);
+      animation-timing-function: var(--ease-exit);
+    }
+    45% {
+      transform: translateY(28px) scale(1, 1);
+      animation-timing-function: linear;
+    }
+    50% {
+      transform: translateY(28px) scale(1.2, 0.8);
+      animation-timing-function: linear;
+    }
+    55% {
+      transform: translateY(28px) scale(1, 1);
+      animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    }
+    100% {
+      transform: translateY(0) scale(1, 1);
+    }
+  }
+  @keyframes mascot-kick-down {
+    0%,
+    60%,
+    100% {
+      opacity: 1;
+    }
+    40% {
+      opacity: 0;
+    }
+  }
+  @keyframes mascot-kick-up {
+    0%,
+    60%,
+    100% {
+      opacity: 0;
+    }
+    40% {
+      opacity: 1;
+    }
+  }
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* One focus treatment everywhere: 2px accent-soft ring plus accent border */
+@utility focus-ring {
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-accent-soft);
+    border-color: var(--color-accent);
   }
 }
 
+/* Interactive-surface transition: exit-speed borders, standard-speed fills */
+@utility transition-press {
+  transition:
+    transform 160ms var(--ease-exit),
+    border-color 160ms var(--ease-exit),
+    color 160ms var(--ease-exit),
+    background-color 300ms var(--ease-standard);
+}
+
+/* Perforated top edge of a printed proof receipt (the signature element) */
+@utility receipt-edge {
+  border-top-style: dashed;
+}
+
+/* Eyebrow labels: 11px, uppercase, tracking 0.08em; color set at use site */
+@utility eyebrow {
+  font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-field);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Replay timeline scrubber: transparent native track, accent thumb */
+input.replay-scrub {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  margin: 0;
+}
+input.replay-scrub::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+}
+input.replay-scrub::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  border: 2px solid var(--color-on-accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  margin-top: -6px;
+}
+input.replay-scrub::-moz-range-track {
+  height: 4px;
+  background: transparent;
+}
+input.replay-scrub::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  border: 2px solid var(--color-on-accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+input.replay-scrub:focus {
+  outline: none;
+}
+input.replay-scrub:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 2px var(--color-accent-soft),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  border-color: var(--color-accent);
+}
+input.replay-scrub:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 2px var(--color-accent-soft),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  border-color: var(--color-accent);
+}
+
+::selection {
+  background: var(--color-accent-soft);
+}
+
+input::placeholder {
+  color: var(--color-ink-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
 }

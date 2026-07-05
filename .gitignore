@@ -13,3 +13,6 @@ dist/
 .env.*
 *.keypair.json
 keypair.json
+
+# exports Claude Design (source locale; la verite versionnee est docs/)
+design-export/
