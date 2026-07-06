@@ -8,6 +8,7 @@ import { CopyButton } from "@/components/ui/CopyButton";
 import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { truncateMiddle } from "@/lib/format";
 import { requestFaucetUsdtForWallet } from "@/lib/chain/placeBet";
+import { currencyLabelForSource } from "@/lib/data/types";
 import {
   fetchWalletFunds,
   requestDevnetSolAirdrop,
@@ -233,7 +234,7 @@ export function JudgePanel({
     setIsRequesting(false);
   };
 
-  const tokenLabel = isChainSource ? "USDT" : "USDC";
+  const tokenLabel = currencyLabelForSource(dataSource);
   const isWalletMissing = isChainSource && ownerBase58 === null;
   const usdtDisplay = isChainSource
     ? chainFunds

@@ -21,7 +21,7 @@ import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { useDemoMatch, type MatchScreenView } from "@/lib/data/useDemoMatch";
 import { useChainMatch } from "@/lib/chain/useChainMatch";
 import { placeBetOnChain } from "@/lib/chain/placeBet";
-import type { MatchView } from "@/lib/data/types";
+import { currencyLabelForSource, type MatchView } from "@/lib/data/types";
 
 export type MatchDataSource = "demo" | "chain";
 
@@ -216,6 +216,7 @@ export function MatchScreen({
           quote={slipQuote}
           onClose={() => setSlipQuote(null)}
           onRefreshQuote={handleRefreshQuote}
+          currencyLabel={currencyLabelForSource(dataSource)}
           onPlaceBet={isChainSource ? handleChainPlaceBet : undefined}
         />
       ) : null}

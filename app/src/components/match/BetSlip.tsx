@@ -31,6 +31,8 @@ type BetSlipProps = {
   onClose: () => void;
   /** Re-snapshots the quote at the current served price. */
   onRefreshQuote: () => void;
+  /** Token label for the active source: "USDT" on chain, "USDC" in demo. */
+  currencyLabel: string;
   /** Real on-chain placement; when absent the slip runs the demo flow. */
   onPlaceBet?: (stakeAmount: number) => Promise<PlaceBetResult>;
 };
@@ -44,13 +46,14 @@ const DEMO_CONFIRM_MS = 1400;
 
 /**
  * The bet slip: right drawer on wide screens, bottom sheet on narrow ones.
- * Demo placement flow; the chain provider will swap the fake confirm for a
- * real place_bet transaction without touching this layout.
+ * Runs the demo confirm animation when onPlaceBet is absent, or a real
+ * place_bet transaction when the chain source supplies it, same layout for both.
  */
 export function BetSlip({
   quote,
   onClose,
   onRefreshQuote,
+  currencyLabel,
   onPlaceBet,
 }: BetSlipProps) {
   const [stakeText, setStakeText] = useState("");
@@ -209,7 +212,7 @@ export function BetSlip({
                   className="focus-ring h-11 w-full rounded-sm border border-border bg-surface pl-3 pr-16 font-mono text-lg tabular-nums text-ink transition-press"
                 />
                 <span className="absolute right-3 top-0 flex h-11 items-center font-mono text-xs text-ink-muted">
-                  USDC
+                  {currencyLabel}
                 </span>
               </div>
             </div>
@@ -217,7 +220,7 @@ export function BetSlip({
             <div className="mt-4 flex items-baseline justify-between">
               <span className="text-sm text-ink-muted">Potential payout</span>
               <span className="font-mono text-xl font-semibold tabular-nums text-ink">
-                {formatAmount(potentialPayout)} USDC
+                {formatAmount(potentialPayout)} {currencyLabel}
               </span>
             </div>
 
@@ -262,7 +265,7 @@ export function BetSlip({
                 <div className="flex justify-between">
                   <span className="text-ink-muted">stake</span>
                   <span className="text-ink">
-                    {formatAmount(stakeAmount)} USDC
+                    {formatAmount(stakeAmount)} {currencyLabel}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -272,7 +275,7 @@ export function BetSlip({
                 <div className="flex justify-between">
                   <span className="text-ink-muted">payout if won</span>
                   <span className="text-ink">
-                    {formatAmount(potentialPayout)} USDC
+                    {formatAmount(potentialPayout)} {currencyLabel}
                   </span>
                 </div>
               </div>

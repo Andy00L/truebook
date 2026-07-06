@@ -83,3 +83,12 @@ export type ProofRefs = {
 export function explorerTxUrl(signature: string): string {
   return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
 }
+
+/**
+ * The token label the UI shows per data source. The live devnet book is
+ * denominated in the TxLINE test USDT mint (ELWTK...G2Ujh); the demo fixtures
+ * are denominated in USDC. Single source of truth so no screen hardcodes it.
+ */
+export function currencyLabelForSource(dataSource: "demo" | "chain"): string {
+  return dataSource === "chain" ? "USDT" : "USDC";
+}
