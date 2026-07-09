@@ -63,6 +63,22 @@ const FIXTURE_NAMES: Record<string, FixtureNameEntry> = {
     awayTeam: "Morocco",
     competitionLine: "TxLINE devnet · international friendly",
   },
+  // Markets 10 to 12, created by the tick of 2026-07-09 (same log-order rule).
+  "18213979": {
+    homeTeam: "Norway",
+    awayTeam: "England",
+    competitionLine: "TxLINE devnet · international friendly",
+  },
+  "18218149": {
+    homeTeam: "Spain",
+    awayTeam: "Belgium",
+    competitionLine: "TxLINE devnet · international friendly",
+  },
+  "18222446": {
+    homeTeam: "Argentina",
+    awayTeam: "Switzerland",
+    competitionLine: "TxLINE devnet · international friendly",
+  },
 };
 
 export function getFixtureNames(fixtureId: string): FixtureNameEntry {
