@@ -123,10 +123,19 @@ async function activateApiToken(jwt: string, txSignature: string, keypair: Keypa
 }
 
 // Run the full auth flow and return the credentials the data client needs.
+// Env override first: /api/token/activate started returning HTTP 500 on
+// July 9, 2026 while previously activated tokens kept working, so a stored
+// TXLINE_API_TOKEN (with its paired TXLINE_JWT) bypasses the broken step.
 export async function acquireTxlineAuth(
   connection: Connection,
   keypair: Keypair,
 ): Promise<Result<TxlineAuth>> {
+  const envApiToken = process.env.TXLINE_API_TOKEN ?? "";
+  if (envApiToken.length > 0) {
+    console.log("[acquireTxlineAuth] using TXLINE_API_TOKEN from env, skipping activation");
+    return { ok: true, value: { jwt: process.env.TXLINE_JWT ?? "", apiToken: envApiToken } };
+  }
+
   const provider = new AnchorProvider(connection, new Wallet(keypair), { commitment: "confirmed" });
 
   const guestResult = await startGuestSession();

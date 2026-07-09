@@ -25,7 +25,7 @@ const USDT_DECIMAL_FACTOR = 1_000_000;
 
 type Result<TValue> = { ok: true; value: TValue } | { ok: false; reason: string };
 
-async function requestFaucetUsdt(
+export async function requestFaucetUsdt(
   provider: AnchorProvider,
   keypair: Keypair,
 ): Promise<Result<string>> {
@@ -78,7 +78,7 @@ async function requestFaucetUsdt(
   }
 }
 
-async function readUsdtBalance(
+export async function readUsdtBalance(
   provider: AnchorProvider,
   owner: PublicKey,
 ): Promise<bigint> {

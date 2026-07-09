@@ -5,6 +5,10 @@
 //   tick (default)       create markets, lock due ones, refresh quotes from TxLINE
 //   settle <market>      prove a locked market's outcome and pay its tickets
 //   rig <market> [factor] post one overcharged NO quote for the sting demo
+//   bet <market> <yes|no> <stake>  ops bet from the keeper wallet (rehearsal)
+//   audit <ticket>       prove the ticket's served price against consensus
+//   refund <ticket>      refund a refundable ticket's stake to its bettor
+//   serve [seconds]      loop lock + fresh quotes + re-rig so anyone can bet
 
 import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
@@ -14,17 +18,22 @@ import { fundHouseVault } from "./fund.js";
 import { listBoard } from "./list.js";
 import { acquireTxlineAuth } from "./txlineAuth.js";
 import {
+  DEFAULT_RIG_FACTOR,
+  auditTicketWithProof,
   createMarketsForFixtures,
   lockDueMarkets,
+  placeBetFromKeeper,
   postQuotes,
   postRiggedQuote,
+  refundTicketToBettor,
+  serveBoard,
   verifyAndSettleMarket,
 } from "./jobs.js";
 
 // Default house margin in basis points (2 percent), used at setup.
 const DEFAULT_MARGIN_BPS_VALUE = 200;
-// Default NO overcharge for the sting: 1.5x the fair NO probability, far past margin.
-const DEFAULT_RIG_FACTOR = 1.5;
+// Default serve-loop refresh, comfortably inside the 120 s quote validity.
+const DEFAULT_SERVE_INTERVAL_SECONDS = 60;
 
 async function runSetup(): Promise<void> {
   const connection = getConnection();
@@ -59,6 +68,25 @@ async function runTickOrSettle(command: string, marketArg: string | undefined): 
       process.exit(1);
     }
     await verifyAndSettleMarket(program, auth, new PublicKey(marketArg));
+    return;
+  }
+
+  if (command === "audit") {
+    if (!marketArg) {
+      console.error("[main] usage: audit <ticketPubkey>");
+      process.exit(1);
+    }
+    await auditTicketWithProof(program, auth, new PublicKey(marketArg));
+    return;
+  }
+
+  if (command === "serve") {
+    const intervalArg = marketArg === undefined ? DEFAULT_SERVE_INTERVAL_SECONDS : Number(marketArg);
+    if (!Number.isFinite(intervalArg) || intervalArg < 15) {
+      console.error("[main] usage: serve [intervalSeconds >= 15]");
+      process.exit(1);
+    }
+    await serveBoard(program, auth, intervalArg);
     return;
   }
 
@@ -114,7 +142,36 @@ async function main(): Promise<void> {
     await listBoard(buildProgram(connection, keypair));
     return;
   }
-  // tick, settle, and rig all authenticate to TxLINE first.
+  // bet and refund talk only to Solana; no TxLINE auth needed.
+  if (command === "bet") {
+    const marketArg = process.argv[3];
+    const sideArg = process.argv[4];
+    const stakeArg = Number(process.argv[5]);
+    if (!marketArg || (sideArg !== "yes" && sideArg !== "no") || !Number.isFinite(stakeArg) || stakeArg <= 0) {
+      console.error("[main] usage: bet <marketPubkey> <yes|no> <stakeUsdt > 0>");
+      process.exit(1);
+    }
+    const connection = getConnection();
+    const keypair = loadKeeperKeypair();
+    const program = buildProgram(connection, keypair);
+    const betPlaced = await placeBetFromKeeper(program, keypair, new PublicKey(marketArg), sideArg, stakeArg);
+    if (!betPlaced) process.exit(1);
+    return;
+  }
+  if (command === "refund") {
+    const ticketArg = process.argv[3];
+    if (!ticketArg) {
+      console.error("[main] usage: refund <ticketPubkey>");
+      process.exit(1);
+    }
+    const connection = getConnection();
+    const keypair = loadKeeperKeypair();
+    const program = buildProgram(connection, keypair);
+    const refunded = await refundTicketToBettor(program, new PublicKey(ticketArg));
+    if (!refunded) process.exit(1);
+    return;
+  }
+  // tick, settle, rig, audit, and serve all authenticate to TxLINE first.
   await runTickOrSettle(command, process.argv[3]);
 }
 

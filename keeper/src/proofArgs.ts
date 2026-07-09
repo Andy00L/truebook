@@ -1,5 +1,9 @@
 // Convert TxLINE proof payloads into the argument shapes verify_market and
-// audit_ticket expect. The ts is always summary.updateStats.minTimestamp.
+// audit_ticket expect. The seed ts differs per validator: validate_stat wants
+// summary.updateStats.minTimestamp, validate_odds wants the odds record's own
+// Ts (its rs:20 check throws 6010 TimestampMismatch otherwise). The test
+// fixture had both equal by coincidence; the live devnet audit of July 9,
+// 2026 exposed the asymmetry.
 
 import { BN } from "@coral-xyz/anchor";
 import type { ScoresStatValidation, OddsValidation, ProofNode } from "@truebook/shared";
@@ -43,7 +47,8 @@ export function buildStatArgs(proof: ScoresStatValidation, definition: MarketDef
 export function buildOddsArgs(validation: OddsValidation) {
   const odds = validation.odds;
   return {
-    ts: new BN(validation.summary.updateStats.minTimestamp),
+    // The odds record's own Ts, not the batch minTimestamp (see header note).
+    ts: new BN(odds.Ts),
     oddsSnapshot: {
       fixtureId: new BN(odds.FixtureId),
       messageId: odds.MessageId,

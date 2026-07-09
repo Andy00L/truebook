@@ -3,10 +3,16 @@
 //   postQuotes                quote every open market from live StablePrice odds
 //   lockDueMarkets            lock markets whose kickoff has passed
 //   verifyAndSettleMarket     prove a locked market and pay its tickets
+//   placeBetFromKeeper        ops bet from the keeper wallet (sting rehearsal)
+//   auditTicketWithProof      prove a ticket's served price against consensus
+//   refundTicketToBettor      refund a refundable ticket's stake
+//   serveBoard                loop: lock + fresh quotes + re-rig, judges can bet
 
 import { AnchorProvider, Program, BN } from "@coral-xyz/anchor";
-import { ComputeBudgetProgram, PublicKey } from "@solana/web3.js";
+import { ComputeBudgetProgram, Keypair, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { randomBytes } from "node:crypto";
+import { setTimeout as sleepMs } from "node:timers/promises";
 import {
   type Truebook,
   type TxlineAuth,
@@ -14,15 +20,21 @@ import {
   fixtureStartMs,
   getFixturesSnapshot,
   getOddsUpdates,
+  getOddsValidation,
   getScoresSnapshot,
   getStatValidation,
 } from "@truebook/shared";
-import { dailyScoresRootPda } from "./pdas.js";
+import { dailyOddsRootPda, dailyScoresRootPda, ticketPda } from "./pdas.js";
+import { requestFaucetUsdt, readUsdtBalance } from "./fund.js";
 import { HOME_WIN, toMarketParams } from "./catalog.js";
 import { houseQuoteFromConsensus, riggedQuoteFromConsensus } from "./pricing.js";
-import { buildStatArgs } from "./proofArgs.js";
+import { buildOddsArgs, buildStatArgs } from "./proofArgs.js";
 
 const CU_LIMIT = 1_400_000;
+// sourceRef: mint ELWTKspH... on devnet (classic SPL token, 6 decimals).
+const USDT_DECIMAL_FACTOR = 1_000_000;
+// Default NO overcharge for the sting: 1.5x the fair NO probability.
+export const DEFAULT_RIG_FACTOR = 1.5;
 
 function keeperPubkey(program: Program<Truebook>): PublicKey {
   return (program.provider as AnchorProvider).wallet.publicKey;
@@ -212,18 +224,54 @@ export async function verifyAndSettleMarket(
     console.error(`[verifyAndSettleMarket] no score updates for fixture ${fixtureId}`);
     return false;
   }
-  const latestSeq = Math.max(...seqNumbers);
 
-  const proofResult = await getStatValidation(auth, {
-    fixtureId,
-    seq: latestSeq,
-    statKey: HOME_WIN.proofStatKeys[0],
-    statKey2: HOME_WIN.proofStatKeys[1],
-  });
-  if (!proofResult.ok) {
-    console.error(`[verifyAndSettleMarket] ${proofResult.reason}`);
+  // Walk candidate seqs from the latest down: post-match rows can carry the
+  // final values under a different period encoding (observed live: period 100
+  // full-time confirmation vs the committed Total period 0), and verify_market
+  // rightly rejects a proof whose period differs from the committed predicate.
+  const descendingSeqs = [...new Set(seqNumbers)].sort(
+    (firstSeq, secondSeq) => secondSeq - firstSeq,
+  );
+  const MAX_SEQ_ATTEMPTS = 12;
+  let matchingProof: Awaited<ReturnType<typeof getStatValidation>> | null = null;
+  let matchingSeq = 0;
+  for (const candidateSeq of descendingSeqs.slice(0, MAX_SEQ_ATTEMPTS)) {
+    const proofResult = await getStatValidation(auth, {
+      fixtureId,
+      seq: candidateSeq,
+      statKey: HOME_WIN.proofStatKeys[0],
+      statKey2: HOME_WIN.proofStatKeys[1],
+    });
+    if (!proofResult.ok) {
+      console.error(`[verifyAndSettleMarket] seq ${candidateSeq}: ${proofResult.reason}`);
+      continue;
+    }
+    const provenStat = proofResult.value.statToProve;
+    const provenStatB = proofResult.value.statToProve2;
+    const matchesPredicate =
+      provenStat.key === HOME_WIN.statAKey &&
+      provenStat.period === HOME_WIN.statAPeriod &&
+      (!HOME_WIN.hasStatB ||
+        (provenStatB !== undefined &&
+          provenStatB.key === HOME_WIN.statBKey &&
+          provenStatB.period === HOME_WIN.statBPeriod));
+    if (matchesPredicate) {
+      matchingProof = proofResult;
+      matchingSeq = candidateSeq;
+      break;
+    }
+    console.log(
+      `[verifyAndSettleMarket] seq ${candidateSeq} proof period ${provenStat.period} does not match committed period ${HOME_WIN.statAPeriod}, trying earlier seq`,
+    );
+  }
+  if (matchingProof === null || !matchingProof.ok) {
+    console.error(
+      `[verifyAndSettleMarket] no proof matching the committed predicate in the last ${MAX_SEQ_ATTEMPTS} updates`,
+    );
     return false;
   }
+  const latestSeq = matchingSeq;
+  const proofResult = matchingProof;
 
   const statArgs = buildStatArgs(proofResult.value, HOME_WIN);
   const scoresRoot = dailyScoresRootPda(
@@ -233,7 +281,7 @@ export async function verifyAndSettleMarket(
 
   // Anchor resolves verified_outcome (PDA of [outcome, market]) and the address-pinned
   // txoracle program; only the specific daily-root account must be supplied.
-  await program.methods
+  const verifySignature = await program.methods
     .verifyMarket(statArgs, latestSeq)
     .accounts({
       cranker: keeperPubkey(program),
@@ -242,7 +290,7 @@ export async function verifyAndSettleMarket(
     })
     .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({ units: CU_LIMIT })])
     .rpc();
-  console.log(`[verifyAndSettleMarket] verified ${marketKey.toBase58()}`);
+  console.log(`[verifyAndSettleMarket] verified ${marketKey.toBase58()} at seq ${latestSeq}, tx ${verifySignature}`);
 
   // Settle every live ticket that references this market (ticket.market at offset 8).
   const tickets = await program.account.ticket.all([
@@ -253,7 +301,7 @@ export async function verifyAndSettleMarket(
     if (!("live" in account.state)) continue;
     const bettorTokenAccount = getAssociatedTokenAddressSync(houseInfo.account.usdtMint, account.bettor);
     try {
-      await program.methods
+      const settleSignature = await program.methods
         .settleTicket()
         .accounts({
           cranker: keeperPubkey(program),
@@ -264,10 +312,188 @@ export async function verifyAndSettleMarket(
         })
         .rpc();
       settledCount += 1;
+      console.log(`[verifyAndSettleMarket] settled ticket ${ticketKey.toBase58()}, tx ${settleSignature}`);
     } catch (settleError) {
       console.error(`[verifyAndSettleMarket] ticket ${ticketKey.toBase58()}: ${String(settleError)}`);
     }
   }
   console.log(`[verifyAndSettleMarket] settled ${settledCount} ticket(s)`);
   return true;
+}
+
+// Ops bet from the keeper wallet: rehearses the sting loop (rig, bet within
+// the 120 s quote window, audit, refund) without a browser wallet. Draws from
+// the TxLINE faucet when the wallet's USDT balance cannot cover the stake.
+export async function placeBetFromKeeper(
+  program: Program<Truebook>,
+  keypair: Keypair,
+  marketKey: PublicKey,
+  side: "yes" | "no",
+  stakeUiAmount: number,
+): Promise<boolean> {
+  const houseInfo = await fetchHouse(program);
+  if (!houseInfo) {
+    console.error("[placeBetFromKeeper] house not initialized");
+    return false;
+  }
+  const provider = program.provider as AnchorProvider;
+  const stakeRaw = BigInt(Math.round(stakeUiAmount * USDT_DECIMAL_FACTOR));
+
+  const walletBalanceRaw = await readUsdtBalance(provider, keypair.publicKey);
+  if (walletBalanceRaw < stakeRaw) {
+    console.log("[placeBetFromKeeper] wallet USDT below stake, drawing from the faucet");
+    const faucetResult = await requestFaucetUsdt(provider, keypair);
+    if (!faucetResult.ok) {
+      console.error(`[placeBetFromKeeper] ${faucetResult.reason}`);
+      return false;
+    }
+    console.log(`[placeBetFromKeeper] faucet granted, tx ${faucetResult.value}`);
+  }
+
+  // Random u64 nonce with the top bit cleared, same scheme as the app.
+  const nonceBytes = randomBytes(8);
+  const nonceTopByte = nonceBytes[7] ?? 0;
+  nonceBytes[7] = nonceTopByte & 0x7f;
+  const nonce = new BN(nonceBytes, "le");
+  const sideArg = side === "yes" ? { yes: {} } : { no: {} };
+  const bettorTokenAccount = getAssociatedTokenAddressSync(
+    houseInfo.account.usdtMint,
+    keypair.publicKey,
+  );
+
+  const signature = await program.methods
+    .placeBet(nonce, sideArg, new BN(stakeRaw.toString()))
+    .accounts({
+      bettor: keypair.publicKey,
+      market: marketKey,
+      vault: houseInfo.account.vault,
+      bettorTokenAccount,
+    })
+    .rpc();
+  const ticketKey = ticketPda(program.programId, marketKey, keypair.publicKey, nonce);
+  console.log(`[placeBetFromKeeper] bet placed, tx ${signature}`);
+  console.log(`[placeBetFromKeeper] ticket ${ticketKey.toBase58()} side=${side} stake=${stakeUiAmount} USDT`);
+  return true;
+}
+
+// Prove a ticket's served price against the anchored TxLINE consensus record.
+// Permissionless: fetches the odds validation for the exact record the ticket
+// referenced, CPIs validate_odds, and prints the audit verdict.
+export async function auditTicketWithProof(
+  program: Program<Truebook>,
+  auth: TxlineAuth,
+  ticketKey: PublicKey,
+): Promise<boolean> {
+  const ticket = await program.account.ticket.fetch(ticketKey);
+  const validationResult = await getOddsValidation(
+    auth,
+    ticket.oddsMessageId,
+    ticket.oddsTs.toNumber(),
+  );
+  if (!validationResult.ok) {
+    console.error(`[auditTicketWithProof] ${validationResult.reason}`);
+    return false;
+  }
+  const oddsArgs = buildOddsArgs(validationResult.value);
+  // Root day follows the args ts, which for validate_odds is the record's own
+  // Ts (audit_ticket re-derives the PDA from args.ts and must find this one).
+  const dailyOddsRoots = dailyOddsRootPda(
+    TXLINE_PROGRAM_ID,
+    validationResult.value.odds.Ts,
+  );
+
+  // Anchor resolves house (const seed) and the address-pinned txoracle program.
+  const signature = await program.methods
+    .auditTicket(oddsArgs)
+    .accounts({
+      cranker: (program.provider as AnchorProvider).wallet.publicKey,
+      market: ticket.market,
+      ticket: ticketKey,
+      dailyOddsMerkleRoots: dailyOddsRoots,
+    })
+    .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({ units: CU_LIMIT })])
+    .rpc();
+
+  const auditedTicket = await program.account.ticket.fetch(ticketKey);
+  const auditStatus = Object.keys(auditedTicket.auditStatus)[0];
+  const ticketState = Object.keys(auditedTicket.state)[0];
+  console.log(`[auditTicketWithProof] audited, tx ${signature}`);
+  console.log(`[auditTicketWithProof] verdict: auditStatus=${auditStatus} state=${ticketState}`);
+  return true;
+}
+
+// Refund a refundable (or voided-market live) ticket's full stake to its bettor.
+export async function refundTicketToBettor(
+  program: Program<Truebook>,
+  ticketKey: PublicKey,
+): Promise<boolean> {
+  const houseInfo = await fetchHouse(program);
+  if (!houseInfo) {
+    console.error("[refundTicketToBettor] house not initialized");
+    return false;
+  }
+  const ticket = await program.account.ticket.fetch(ticketKey);
+  const bettorTokenAccount = getAssociatedTokenAddressSync(
+    houseInfo.account.usdtMint,
+    ticket.bettor,
+  );
+
+  const signature = await program.methods
+    .refundTicket()
+    .accounts({
+      cranker: (program.provider as AnchorProvider).wallet.publicKey,
+      market: ticket.market,
+      ticket: ticketKey,
+      vault: houseInfo.account.vault,
+      bettorTokenAccount,
+    })
+    .rpc();
+
+  const refundedTicket = await program.account.ticket.fetch(ticketKey);
+  const balance = await (program.provider as AnchorProvider).connection.getTokenAccountBalance(
+    bettorTokenAccount,
+  );
+  console.log(`[refundTicketToBettor] refunded, tx ${signature}`);
+  console.log(
+    `[refundTicketToBettor] ticket state=${Object.keys(refundedTicket.state)[0]}, bettor balance ${balance.value.uiAmountString} USDT`,
+  );
+  return true;
+}
+
+// Keep the board alive so anyone can bet at any moment: place_bet rejects
+// quotes older than 120 seconds, so a one-shot tick leaves the book unbettable
+// two minutes later. Loops lock + fresh quotes + re-rig of every market listed
+// in KEEPER_RIG_SKIP (the same set postQuotes skips), until Ctrl-C.
+export async function serveBoard(
+  program: Program<Truebook>,
+  auth: TxlineAuth,
+  intervalSeconds: number,
+): Promise<void> {
+  console.log(`[serveBoard] refreshing every ${intervalSeconds}s, Ctrl-C to stop`);
+  let cycleIndex = 0;
+  for (;;) {
+    cycleIndex += 1;
+    try {
+      const createdCount = await createMarketsForFixtures(program, auth);
+      const lockedCount = await lockDueMarkets(program);
+      const quotedCount = await postQuotes(program, auth);
+      let riggedCount = 0;
+      for (const riggedMarket of riggedMarketsToSkip()) {
+        const rigged = await postRiggedQuote(
+          program,
+          auth,
+          new PublicKey(riggedMarket),
+          DEFAULT_RIG_FACTOR,
+        );
+        if (rigged) riggedCount += 1;
+      }
+      console.log(
+        `[serveBoard] cycle ${cycleIndex}: +${createdCount} markets, ${lockedCount} locked, ${quotedCount} quoted, ${riggedCount} re-rigged`,
+      );
+    } catch (cycleError) {
+      // One failed cycle (RPC hiccup, feed gap) must not kill the loop.
+      console.error(`[serveBoard] cycle ${cycleIndex} failed: ${String(cycleError)}`);
+    }
+    await sleepMs(intervalSeconds * 1000);
+  }
 }
