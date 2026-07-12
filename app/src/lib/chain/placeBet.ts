@@ -57,6 +57,25 @@ const TOKEN_ACCOUNT_RENT_LAMPORTS = 2_039_280;
 const DEVNET_HINT =
   "TrueBook runs on Solana devnet; mainnet balances do not count here.";
 
+/**
+ * TrueBook program error codes as they surface in raw simulation errors
+ * ("custom program error: 0x1774"), mapped to what the bettor should do.
+ * Anchor numbers a #[error_code] enum from 6000 (0x1770); these are the
+ * variants reachable from place_bet. sourceRef:
+ * program/programs/truebook/src/errors.rs (declaration order).
+ */
+const PROGRAM_ERROR_MESSAGES: Record<string, string> = {
+  "0x1770": "The house is paused; no new bets right now.",
+  "0x1773": "Enter a stake above zero.",
+  "0x1774":
+    "The quote expired before the bet landed. Refresh the quote and place it again.",
+  "0x1775": "This market just closed to bets. Pick another market.",
+  "0x1776": "Kickoff has passed for this market; it no longer takes bets.",
+  "0x177b": "This bet would exceed the house exposure cap for the market. Try a smaller stake.",
+  "0x177c": "This payout exceeds the per-ticket cap. Try a smaller stake.",
+  "0x177d": "The house vault cannot cover this payout right now. Try a smaller stake.",
+};
+
 /** Maps raw wallet/RPC failures onto distinct, actionable messages. */
 export function describeChainError(chainError: unknown): string {
   const text =
@@ -68,6 +87,12 @@ export function describeChainError(chainError: unknown): string {
     lowered.includes("declined")
   ) {
     return "Signature request declined in the wallet.";
+  }
+  // A known program rejection reads far better than "custom program error: 0x…".
+  for (const [errorCode, message] of Object.entries(PROGRAM_ERROR_MESSAGES)) {
+    if (lowered.includes(errorCode)) {
+      return message;
+    }
   }
   if (lowered.includes("429") || lowered.includes("too many requests")) {
     return "The devnet RPC rate-limited the request. Wait a few seconds and retry.";

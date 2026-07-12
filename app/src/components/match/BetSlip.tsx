@@ -26,6 +26,8 @@ export type SlipQuote = {
   marginLabel: string;
   /** Present when the quote comes from a live devnet market. */
   marketAddress?: string;
+  /** When the on-chain quote was posted (epoch ms); drives the real countdown. */
+  quotePostedTsMs?: number;
   side?: "yes" | "no";
 };
 
@@ -54,7 +56,28 @@ type BetSlipProps = {
  * (QUOTE_VALIDITY_SECONDS): a posted quote is placeable for 120 seconds.
  */
 const QUOTE_VALIDITY_SECONDS = 120;
+/**
+ * How much earlier the slip treats a chain quote as expired than the on-chain
+ * cutoff. The program checks freshness with the validator clock at execution
+ * time, a few seconds after the click (sign, send, land), and client and
+ * validator clocks can drift; this buffer makes the slip prompt a refresh
+ * before the program would reject the bet as QuoteExpired.
+ */
+const QUOTE_SAFETY_SECONDS = 15;
 const DEMO_CONFIRM_MS = 1400;
+
+/**
+ * Seconds a quote is still safely placeable. On chain it counts down from the
+ * real on-chain post time (minus the safety buffer); on the demo source, from
+ * a flat window that resets when the slip opens.
+ */
+function quoteSecondsRemaining(quotePostedTsMs?: number): number {
+  if (quotePostedTsMs === undefined) {
+    return QUOTE_VALIDITY_SECONDS;
+  }
+  const ageSeconds = Math.floor((Date.now() - quotePostedTsMs) / 1000);
+  return Math.max(0, QUOTE_VALIDITY_SECONDS - QUOTE_SAFETY_SECONDS - ageSeconds);
+}
 
 /**
  * The bet slip (v3 noir): a right drawer on wide screens, a bottom sheet on
@@ -71,8 +94,8 @@ export function BetSlip({
   onPlaceBet,
 }: BetSlipProps) {
   const [stakeText, setStakeText] = useState("");
-  const [quoteSecondsLeft, setQuoteSecondsLeft] = useState(
-    QUOTE_VALIDITY_SECONDS,
+  const [quoteSecondsLeft, setQuoteSecondsLeft] = useState(() =>
+    quoteSecondsRemaining(quote.quotePostedTsMs),
   );
   const [placement, setPlacement] = useState<PlacementStatus | null>(null);
   const [chainStage, setChainStage] = useState<ChainStage | null>(null);
@@ -81,12 +104,14 @@ export function BetSlip({
   const confirmTimerRef = useRef<number | null>(null);
 
   // Reset the countdown whenever a fresh quote snapshot arrives (the React
-  // adjust-state-during-render pattern, no effect involved).
-  const quoteIdentity = `${quote.outcomeKey}:${quote.servedOdds}`;
+  // adjust-state-during-render pattern, no effect involved). The post time is
+  // part of the identity so a re-post of the SAME odds still resets the clock
+  // from its new on-chain timestamp.
+  const quoteIdentity = `${quote.outcomeKey}:${quote.servedOdds}:${quote.quotePostedTsMs ?? ""}`;
   const [lastQuoteIdentity, setLastQuoteIdentity] = useState(quoteIdentity);
   if (lastQuoteIdentity !== quoteIdentity) {
     setLastQuoteIdentity(quoteIdentity);
-    setQuoteSecondsLeft(QUOTE_VALIDITY_SECONDS);
+    setQuoteSecondsLeft(quoteSecondsRemaining(quote.quotePostedTsMs));
   }
 
   // Quote freshness countdown (browser timer).

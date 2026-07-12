@@ -43,6 +43,24 @@ export type ChainBoardResult =
 /** sourceRef: program odds convention, decimal odds in bps (2.06 = 20600). */
 const ODDS_BPS_FACTOR = 10_000;
 const BPS_FACTOR = 10_000;
+/** sourceRef: program constants.rs QUOTE_VALIDITY_SECONDS (place_bet window). */
+const QUOTE_VALIDITY_SECONDS = 120;
+/** Match the bet slip's client-side safety buffer (BetSlip QUOTE_SAFETY_SECONDS). */
+const QUOTE_SAFETY_SECONDS = 15;
+
+/**
+ * A quote is only offered on the board while it is still safely placeable. A
+ * market whose quote has aged out (a keeper gap, or a market whose consensus
+ * line left the feed) shows "Awaiting quote" instead of a stale price the
+ * program would reject as QuoteExpired.
+ */
+function isQuoteFresh(quotePostedTs: number, nowMs: number): boolean {
+  if (quotePostedTs <= 0) {
+    return false;
+  }
+  const ageSeconds = Math.floor(nowMs / 1000) - quotePostedTs;
+  return ageSeconds <= QUOTE_VALIDITY_SECONDS - QUOTE_SAFETY_SECONDS;
+}
 
 /** Board order of the catalog groups; in-play windows land last. */
 const CATALOG_ORDER = new Map(
@@ -94,11 +112,13 @@ function toMarketView(
   marginFactor: number,
   isFeatured: boolean,
   isInPlay: boolean,
+  nowMs: number,
 ): MarketView {
   const marketAddress = entry.publicKey.toBase58();
   const account = entry.account;
   const stateName = enumVariant(account.state);
-  const hasQuote = account.quotePostedTs.toNumber() > 0;
+  const quotePostedTs = account.quotePostedTs.toNumber();
+  const hasQuote = isQuoteFresh(quotePostedTs, nowMs);
   const servedYesOdds = account.yesOddsBps / ODDS_BPS_FACTOR;
   const servedNoOdds = account.noOddsBps / ODDS_BPS_FACTOR;
 
@@ -115,6 +135,7 @@ function toMarketView(
         : undefined,
     isInPlay,
     closesAtMs: account.kickoffTs.toNumber() * 1000,
+    quotePostedTsMs: hasQuote ? quotePostedTs * 1000 : undefined,
     outcomes: hasQuote
       ? [
           {
@@ -214,11 +235,11 @@ export async function fetchChainBoard(): Promise<ChainBoardResult> {
           (CATALOG_ORDER.get(right.descriptor?.key ?? "") ?? 50);
         return leftOrder - rightOrder;
       });
-      // The accent cell belongs to the first quoted open market of the board.
+      // The accent cell belongs to the first freshly-quoted open market.
       const featuredAddress = describedMarkets.find(
         ({ entry }) =>
           enumVariant(entry.account.state) === "open" &&
-          entry.account.quotePostedTs.toNumber() > 0,
+          isQuoteFresh(entry.account.quotePostedTs.toNumber(), nowMs),
       )?.entry.publicKey.toBase58();
 
       fixtures.push({
@@ -240,6 +261,7 @@ export async function fetchChainBoard(): Promise<ChainBoardResult> {
             marginFactor,
             entry.publicKey.toBase58() === featuredAddress,
             isInPlay,
+            nowMs,
           ),
         ),
         settledMarkets: [],

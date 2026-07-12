@@ -107,6 +107,7 @@ export function MatchScreen({
       consensusOdds: outcome.consensusOdds,
       marginLabel: market.marginLabel,
       marketAddress: market.marketAddress,
+      quotePostedTsMs: market.quotePostedTsMs,
       side: outcome.outcomeKey.endsWith("-yes")
         ? "yes"
         : outcome.outcomeKey.endsWith("-no")

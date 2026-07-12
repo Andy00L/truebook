@@ -40,6 +40,13 @@ export type MarketView = {
    */
   isInPlay?: boolean;
   closesAtMs?: number;
+  /**
+   * When the current quote was posted on chain (epoch ms). The bet slip
+   * counts its freshness window down from this real timestamp, so it never
+   * shows a quote as valid that the program would reject as expired. Absent
+   * on the demo source (no on-chain quote).
+   */
+  quotePostedTsMs?: number;
   outcomes: OutcomeQuote[];
 };
 
