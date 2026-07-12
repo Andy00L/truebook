@@ -20,10 +20,25 @@ export const CONFIRM_TIMEOUT_MS = 60_000;
  * ever lands in the repo; the public devnet endpoint stays as the fallback.
  * The literal process.env member access is required: Next inlines it into
  * the client bundle at build time. Set it in app/.env.local and in the
- * Vercel project env.
+ * Vercel project env, as the FULL https URL including the api-key param.
  */
 export function resolveDevnetRpcUrl(): string {
-  return process.env.NEXT_PUBLIC_DEVNET_RPC_URL ?? DEVNET_RPC_URL;
+  const configuredUrl = (process.env.NEXT_PUBLIC_DEVNET_RPC_URL ?? "").trim();
+  if (
+    configuredUrl.startsWith("http://") ||
+    configuredUrl.startsWith("https://")
+  ) {
+    return configuredUrl;
+  }
+  // An empty or malformed value (a bare API key, stray quotes) would make
+  // the Connection constructor throw and kill SSR prerendering; warn and
+  // serve the public endpoint instead.
+  if (configuredUrl.length > 0) {
+    console.warn(
+      "[resolveDevnetRpcUrl] NEXT_PUBLIC_DEVNET_RPC_URL is not an http(s) URL; falling back to the public devnet RPC.",
+    );
+  }
+  return DEVNET_RPC_URL;
 }
 
 export function createDevnetConnection(): Connection {
