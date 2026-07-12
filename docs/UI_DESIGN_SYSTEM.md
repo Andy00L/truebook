@@ -1,126 +1,178 @@
 # TrueBook UI design system (the token sheet)
 
 The single source of truth for the frontend. Every screen reads from this; no
-literal colors, spacing, radii, or shadows in components. Register: precision
-tools (dense, scannable, credible for data-literate judges), with a live
-scoreboard edge. Theme: dark only. Stack: Next.js App Router, Tailwind, shadcn.
+literal colors, spacing, radii, or shadows in components. Register: a noir
+wealth terminal, Wealthsimple's dark account screens crossed with Convex's
+data precision: calm, warm-black, borderless, precise. Theme: dark only.
+Stack: Next.js App Router, Tailwind v4 @theme tokens.
 
-House style, one line: a broadcast scoreboard that shows its work. Calm graphite
-field, green only where something is live or proven, every number monospaced and
-auditable.
+House style, one line: a private-bank terminal for provable odds. Warm black
+surfaces, big thin numbers that roll digit by digit, one green for everything
+interactive, and every verdict spoken by a bordered pill, never a stamp.
 
-Hero moment: the match page, where live score, the market board, and the price
-transparency of each quote sit together. Every other screen is quieter so it lands.
+Hero moment: the match page, where the served price, its distance from
+consensus, and the odds tick (the odometer roll) sit together. Every other
+screen is quieter.
 
-## Palette (seven roles plus variants)
+Version note: v3 (noir), approved July 11, 2026, replaces the ticket-paper
+sheet (v2, July 10) and the graphite broadcast-dark sheet (v1). The component
+values below are extracted from the reference DOM (Wealthsimple dark), not
+approximated. The approved palette card is `ui-design/palette.html`.
 
-Dark is built from true cool greys, not black, with elevation by surface shift
-(Linear and Vercel convention). Contrast checked against the field.
+## Palette
 
-| Role | Hex | Use |
+| Role | Value | Use |
 | --- | --- | --- |
-| Field | `#0B0E11` | the base everything sits on |
-| Surface | `#12161B` | cards, panels, table rows |
-| Surface elevated | `#171C22` | popovers, dialogs, the bet slip |
-| Border | `#1E242B` | 1px hairlines, table lines, dividers |
-| Ink | `#E8ECF1` | primary text, live numbers (about 15:1 on field) |
-| Muted ink | `#8A94A3` | secondary text, labels (about 7:1) |
-| Faint ink | `#566072` | eyebrows, disabled, empty states (large or non-body only) |
-| Accent green | `#00E676` | the one interactive color: links, primary action, live, odds up, proven |
-| Accent soft | `rgba(0,230,118,0.12)` | accent fills, focus ring, hover wash |
-| Accent deep | `#00A050` | pressed accent, accent text on light chips |
-| Reserved amber | `#F5A623` | locked or pending only, once per screen |
-| Destructive red | `#FF5252` | odds down, losses, a proven violation, errors |
+| Field | `#0D0D0D` | the page, a warm black; never pure `#000`, never a grey theme |
+| Card | `#161615` | the first surface; borderless, shadowless |
+| Raised | `#1F1F1E` | the second surface: inner panels, chips, the segmented track |
+| Lift | `#2C2C2A` | the segmented indicator, one step above raised |
+| Hairline | `rgba(252,252,252,0.07)` | row separators only; cards have no border |
+| Ink | `#FCFCFC` | primary text AND the primary button fill (about 17:1 on card) |
+| Muted | `#7E7B76` | secondary text, section labels (labels only; long copy in ink) |
+| Faint | `#585652` | captions, disabled; decorative only, never body copy |
+| Accent green | `#37BC65` | THE only interactive color: links, live, focus, rising deltas, verified |
+| Accent soft | `rgba(55,188,101,0.12)` | tinted fills, hover wash |
+| Data blue | `#5B88D9` | RESERVED: the consensus line in charts and info notes; never interactive |
+| Amber | `#D6A243` | RESERVED: locked / awaiting proof / low-SOL, once per screen |
+| Danger red | `#E5484D` | a proven violation, a loss, a falling price, errors |
+| Chart fill | `#409652` at 32% | the gradient top stop, fading to transparent, dots only |
 
-Rules: green is the only saturated color at rest. Red is reserved punctuation for
-a falling price, a loss, or a violation, never a generic status. Amber marks a
-locked or awaiting-proof market, once per screen. The field is never a flat black
-and never a flat white.
+Rules: green is the only saturated interactive color. The primary button is a
+cream pill (ink `#FCFCFC` fill, field text): the brightest object on screen is
+the primary action, and it is neutral, not a second accent. Blue and amber are
+punctuation, once per screen. Red is reserved, never a generic status.
 
 ## Type
 
-- UI face: Geist Sans (already wired by create-next-app). Weight ceiling 600.
-- Precise face: Geist Mono, `font-variant-numeric: tabular-nums` on every odds,
-  score, amount, timestamp, and hash. Numbers never reflow width.
-- Size steps (dense): 11, 12, 13, 14, 16, 20, 28, 40 px.
-- Eyebrow: 11px, uppercase, tracking +0.08em, muted or faint ink.
-- Sentence case for titles and buttons; uppercase only for eyebrows and pills.
+- One family: TikTok Sans (Google Fonts), weights 300 to 600, ceiling 600.
+- Big numbers at weight 300 (large, thin, quiet): vault, odds, scores,
+  balances, outcomes.
+- UI at 400 to 500; sentence case everywhere; uppercase only inside status
+  pills (11px, tracking 0.08em).
+- Data face: Geist Mono, `font-variant-numeric: tabular-nums`, for every hash,
+  address, tx signature, odds source string, and the transparency equation.
+- ALL numbers tabular so digits never reflow.
+- Size steps: 11, 12, 13, 15, 17, 22, 32, 44 px.
+- Section labels: 13px, weight 400, muted, sentence case (no uppercase
+  eyebrows in this system).
 
 ## Space and shape
 
-- Radii: 8 (chips, inputs), 12 (cards, buttons), 16 (dialogs, the slip). Base 12.
-- Spacing: 4px base rhythm (4, 8, 12, 16, 24, 32).
-- Card padding: 16 to 20px. Table cell padding: 8 by 12.
-- Content width: 1200 to 1440px, generous side padding; a real grid.
+- Radii: 16 (cards), 12 (inner panels, inputs), 9999 (everything interactive:
+  buttons, chips, badges, the segmented control, the wallet chip). Icon
+  buttons are 32px circles on raised.
+- Spacing: 4px base rhythm (4, 8, 12, 16, 24, 32). Card padding 20 to 24px.
+- Content width 1060 to 1200px, generous side padding.
+- Radii nest downward: an inner radius is always smaller than its parent.
 
-## Material and depth
-
-One material: the graphite card. Opaque (no glass on a dense dark workspace).
+## Material and depth (a surface value, never a shadow)
 
 ```css
---surface-fill: #12161B;
---surface-border: 1px solid #1E242B;
---surface-top-highlight: inset 0 1px 0 rgba(255,255,255,0.03); /* thin top edge */
---shadow-card: 0 1px 2px rgba(0,0,0,0.40), 0 8px 24px rgba(0,0,0,0.32);
---shadow-elevated: 0 2px 4px rgba(0,0,0,0.45), 0 16px 40px rgba(0,0,0,0.40);
+--field: #0D0D0D;  --card: #161615;  --raised: #1F1F1E;  --lift: #2C2C2A;
+.card { background: var(--card); border-radius: 16px; }  /* no border, no shadow */
+.row:hover { background: var(--raised); }                /* or brightness(1.3) */
 ```
 
-On dark, elevation is carried by the surface shift and the border plus the top
-highlight; shadows stay subtle. Focus is one treatment everywhere: a 2px accent
-ring at `--accent-soft` plus a border in accent green, visible on field and
-surface.
+Elevation is field < card < raised < lift. No drop shadows, no borders on
+cards, no glass, no grain, no texture. Interactive surfaces respond by
+brightening (120ms); the cream button hovers `brightness(0.9)`. Nothing lifts
+or translates on hover. One sanctioned exception: a popover or sheet over a
+scrim may carry a single soft drop (`0 16px 40px rgba(0,0,0,0.45)`).
+Hairlines separate rows only, never outline surfaces. Focus is one treatment
+everywhere: a 2px accent outline, offset 2px.
+
+## Component recipes (extracted from the reference DOM)
+
+- **Odometer number (the signature motion).** Every changing figure animates
+  per digit: a hidden static digit reserves the width (`visibility: hidden;
+  display: inline-block`), the live digit sits absolute over it (`top: 0;
+  left: 0; right: 0; text-align: center; will-change: transform, opacity,
+  filter`) and rolls in with `translateY(0.55em to 0)` + opacity 0 to 1 +
+  `blur(6px to 0)`, 450ms on the enter curve, 30ms stagger between changing
+  digits. Separators and currency stay static; the animated replica is
+  `aria-hidden`, the true value stays accessible.
+- **Dot-matrix chart.** Line `#37BC65` stroke-width 1.5, drawn twice (an echo
+  at opacity 0.2 under the crisp stroke). Fill: linearGradient `#409652` at
+  0.32 to transparent, masked by an SVG pattern of 0.5px-radius white dots on
+  a 2x2px grid; never a solid wash. Consensus line `#5B88D9`, 1px, dashed
+  2 3. Step-curve geometry (control points at horizontal midpoints). No
+  gridlines, no axis boxes; 11px muted time labels.
+- **Segmented control.** Pill track on raised, 3px inner padding; a sliding
+  lift indicator animating `translateX` + measured width, 250ms on-screen
+  curve (the one sanctioned width transition); selected label ink 500, others
+  muted 400; `role=tablist/tab`.
+- **Buttons.** Primary: cream pill, `#FCFCFC` fill, field text at 500, h44,
+  padding 0 22, hover `brightness(0.9)`, press scale 0.97. Secondary: raised
+  pill, ink label 13px 500, 16px icon + 8px gap, h40, hover
+  `brightness(1.3)`. Tertiary: green text link.
+- **Icons.** One set, 16x16 viewBox, filled paths with rounded terminals
+  (0.9px-radius rounded ends, no thin stroked outlines), `currentColor`;
+  standalone icons on 32px raised circles, never bare on the field.
+- **Accordion.** Header: 13px muted label left, aggregate value + 16px
+  chevron right; chevron rotates 180deg at 250ms; body expands
+  `grid-template-rows: 0fr to 1fr` at 250ms (never height). Rows: 15px ink
+  title over 13px muted subtitle, value right-aligned tabular, the row
+  surface brightens on hover; rows separate by spacing, not lines.
+- **Proof pills (the entire verdict language; no seals, stamps, coins, or
+  skeuomorphism anywhere).** 11px uppercase pill, tracking 0.08em, weight
+  500, 1px border, 10 to 12% tinted fill. VERIFIED ON SOLANA green; PROVEN
+  OVERCHARGE and REFUNDED danger; LOCKED and AWAITING PROOF amber; LIVE green
+  with a 6px core dot and two staggered ping halos (the second about 1s
+  late).
+- **Delta line.** 16px arrow icon + signed change + percent, 13px 500, green
+  rising or danger falling, then a muted period label.
+- **Wallet chip.** Raised pill, 8px green connection dot, truncated address
+  in mono 12px.
+- **Transparency equation (the secondary signature).** Under every quote, in
+  mono 12px muted: `consensus 2.19 · margin 2.0% · you 2.15`, the consensus
+  figure allowed in data blue.
 
 ## Motion tokens
 
-- Durations: 70 (micro states), 120 (small moves), 200 (standard), 320 (large or
-  hero). Nothing decorative over about 500.
-- Easings: enter `cubic-bezier(0.16, 1, 0.3, 1)`, exit `cubic-bezier(0.4, 0, 1, 1)`,
-  on-screen `cubic-bezier(0.4, 0, 0.2, 1)`.
-- Stagger constant: 40ms for sequenced groups (market rows, ticket lists).
-- Press scale: 0.98. Hover lift on cards: translateY(-2px) at 120ms.
-- Odds tick: on a price change, the cell background pulses accent-soft (up) or a
-  red soft (down) for 300ms then fades; the digits never jump width (tabular).
-- `prefers-reduced-motion`: all of the above collapse to instant or opacity-only,
-  identical final layout.
+- Durations: 120 (micro: hover, color), 160 (exit), 200 (enter), 250
+  (on-screen), 450 (odometer per digit), 600 (chart draw-on). Nothing
+  decorative over about 600.
+- Easings: enter `cubic-bezier(0.16,1,0.3,1)`, exit `cubic-bezier(0.4,0,1,1)`,
+  on-screen `cubic-bezier(0.4,0,0.2,1)`. Linear only on a continuous spinner.
+- Stagger constant: 40ms (rows, lists); 30ms between changing odometer digits.
+- Press scale 0.97. Hover: surface brightening only, 120ms.
+- Odds tick: the changed digits roll (odometer) and a small delta chip appears
+  beside the price for 1.2s; digits never change width.
+- Count-ups ease the value on tabular figures; one number animating at a time.
+- Overshoot budget: ZERO. Nothing bounces; the register is calm.
+- `prefers-reduced-motion`: all collapse to opacity-only, identical final
+  layout.
 
 ## Signature element (what TrueBook owns)
 
-Primary: the proof receipt. A settled or audited ticket renders as a printed bet
-slip: a perforated top edge (a dashed hairline in border color), the market and
-outcome in sans, the numbers in mono, then a proof block of truncated 32-byte
-hashes (day root, merkle path) each with a copy affordance and an explorer link,
-closed by a stamp reading VERIFIED ON SOLANA in accent green (or REFUNDED,
-PROVEN OVERCHARGE in red for an audit violation). Placement: once per ticket on
-the tickets page, and full-size on the public `/verify/[market]` page. Built only
-from the token sheet: surface-elevated fill, border hairline, mono, the green or
-red stamp.
+Primary: the audited price in motion. Every changing figure rolls per digit
+under a blur (the odometer), and every resolved state speaks only through a
+bordered proof pill. Placement: the odds tick on the match board, the vault
+count-in on the lobby, the balance roll in judge mode, the verdict pill last
+in every choreography.
 
-Secondary: the price transparency bar. On every market quote, a thin segmented
-bar shows consensus price, the displayed margin, and the served price, labeled in
-mono, so the house markup is visible at a glance. Placement: under each market
-odds, and expanded in the price popover.
+Secondary: the transparency equation under every quote, and the dot-matrix
+chart wherever a price history renders (lobby sparkline, replay chart).
 
 ## Screens (hero first)
 
-1. `/match/[fixtureId]` (hero): live score header, the market board, price
-   transparency, the bet slip drawer.
-2. `/` lobby: remaining fixtures, featured markets, the house honesty banner.
-3. `/tickets`: the bettor's tickets, each with its proof receipt.
-4. `/verify/[market]`: the public, shareable verifiable resolution page.
-5. `/replay`: replay a finished match with quotes and settlement.
-6. Judge mode: a faucet button and airdrop link, reachable from the lobby.
+1. `/match/[fixtureId]` (hero): score header, the market board, price
+   transparency, the bet slip drawer resolving into a verified receipt.
+2. `/` lobby: the honesty header (vault odometer + sparkline), fixture cards,
+   judge mode entry.
+3. `/tickets`: accordion ticket rows opening into on-chain receipts.
+4. `/verify/[market]`: the public, shareable statement card.
+5. `/replay`: the dot-matrix price chart scrubbed over a settled match.
+6. Judge mode: the funding panel over the lobby.
 
-## Reference and anti-patterns (from the research sweep)
+## Anti-patterns (never)
 
-- Reference dark systems: Linear (very dark cool grey base, type tuned for dark),
-  Vercel (`#171717` ink, Geist, no brand blue, the ink is the brand). Sources:
-  [shadcn.io Vercel design](https://www.shadcn.io/design/vercel),
-  [dark dashboard patterns 2026](https://www.aydesign.ai/blog/dark-mode-dashboard-design-patterns-2026).
-- Sportsbook convention (adopt): green for shortening odds, red for lengthening;
-  odds cells must not reflow or jump; subtle animation on change; ample spacing;
-  live updates without a manual refresh. Source:
-  [betrush sportsbook UI](https://www.betrush.com/online-sportsbook-ui-design-1037.html).
-- Never: framework default greys with a default blue; flat white cards; a single
-  flat shadow; glass on a dense dark screen; a second accent used generically;
-  title case; weights over 600; numbers that reflow; empty states left as bare
-  "No data".
+Seals, stamps, coins, wax, paper texture, perforations, or any skeuomorphic
+object; borders or drop shadows on cards; pure `#000` or a grey theme; a
+second interactive color; blue or amber used generically; title case; weights
+over 600; numbers that reflow; empty states left as a bare "No data";
+animating width/height/top/left (exceptions: the segmented indicator, the
+accordion grid-rows); a default or linear easing on a move; a bare crossfade;
+scale-from-0; hover lifts; a stagger of 100ms or more; glass; grain;
+gradients as decoration (the chart fill is the only gradient).
