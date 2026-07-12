@@ -14,6 +14,95 @@ export type Truebook = {
   },
   "instructions": [
     {
+      "name": "auditCashOut",
+      "discriminator": [
+        200,
+        10,
+        69,
+        250,
+        138,
+        87,
+        238,
+        81
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "house",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market"
+        },
+        {
+          "name": "ticket"
+        },
+        {
+          "name": "cashOutReceipt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  115,
+                  104,
+                  111,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "ticket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dailyOddsMerkleRoots",
+          "docs": [
+            "PDA derived from the proof timestamp, and the CPI validates its data."
+          ]
+        },
+        {
+          "name": "txoracleProgram",
+          "address": "6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "validateOddsArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "auditTicket",
       "discriminator": [
         28,
@@ -58,6 +147,14 @@ export type Truebook = {
           "writable": true
         },
         {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "auditorTokenAccount",
+          "writable": true
+        },
+        {
           "name": "dailyOddsMerkleRoots",
           "docs": [
             "PDA derived from the proof timestamp, and the CPI validates its data."
@@ -66,6 +163,10 @@ export type Truebook = {
         {
           "name": "txoracleProgram",
           "address": "6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J"
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": [
@@ -78,6 +179,175 @@ export type Truebook = {
           }
         }
       ]
+    },
+    {
+      "name": "cashOutTicket",
+      "discriminator": [
+        16,
+        243,
+        80,
+        184,
+        62,
+        122,
+        96,
+        21
+      ],
+      "accounts": [
+        {
+          "name": "bettor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "house",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market"
+        },
+        {
+          "name": "ticket",
+          "writable": true
+        },
+        {
+          "name": "cashOutReceipt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  115,
+                  104,
+                  111,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "ticket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "bettorTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claimCashOutRepair",
+      "discriminator": [
+        151,
+        90,
+        254,
+        13,
+        225,
+        87,
+        17,
+        117
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "house",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ticket"
+        },
+        {
+          "name": "cashOutReceipt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  115,
+                  104,
+                  111,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "ticket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "bettorTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "auditorTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
     },
     {
       "name": "createMarket",
@@ -849,6 +1119,19 @@ export type Truebook = {
   ],
   "accounts": [
     {
+      "name": "cashOutReceipt",
+      "discriminator": [
+        247,
+        130,
+        40,
+        173,
+        90,
+        157,
+        33,
+        239
+      ]
+    },
+    {
       "name": "house",
       "discriminator": [
         21,
@@ -913,6 +1196,32 @@ export type Truebook = {
         206,
         32,
         0
+      ]
+    },
+    {
+      "name": "cashOutAudited",
+      "discriminator": [
+        85,
+        217,
+        204,
+        120,
+        105,
+        165,
+        72,
+        141
+      ]
+    },
+    {
+      "name": "cashOutRepaid",
+      "discriminator": [
+        40,
+        250,
+        57,
+        173,
+        247,
+        14,
+        131,
+        199
       ]
     },
     {
@@ -1017,6 +1326,19 @@ export type Truebook = {
         166,
         170,
         172
+      ]
+    },
+    {
+      "name": "ticketCashedOut",
+      "discriminator": [
+        174,
+        14,
+        251,
+        89,
+        59,
+        107,
+        29,
+        83
       ]
     },
     {
@@ -1178,6 +1500,26 @@ export type Truebook = {
       "code": 6028,
       "name": "oddsRecordMismatch",
       "msg": "The audited odds record does not match the ticket's referenced quote."
+    },
+    {
+      "code": 6029,
+      "name": "unsupportedMarketPredicate",
+      "msg": "The market predicate maps to no known TxLINE consensus record; it cannot be priced or audited."
+    },
+    {
+      "code": 6030,
+      "name": "wrongOddsRecordForMarket",
+      "msg": "The audited odds record is not the consensus record type the market's predicate commits to."
+    },
+    {
+      "code": 6031,
+      "name": "cashOutValueZero",
+      "msg": "The current quote values this ticket at zero; hold it to settlement instead."
+    },
+    {
+      "code": 6032,
+      "name": "shortfallAlreadyPaid",
+      "msg": "This cash-out's shortfall and bounty have already been paid."
     }
   ],
   "types": [
@@ -1247,6 +1589,138 @@ export type Truebook = {
           },
           {
             "name": "subtract"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cashOutAudited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "receipt",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticket",
+            "type": "pubkey"
+          },
+          {
+            "name": "authentic",
+            "type": "bool"
+          },
+          {
+            "name": "violation",
+            "type": "bool"
+          },
+          {
+            "name": "servedOppositeImpliedBps",
+            "type": "u32"
+          },
+          {
+            "name": "consensusOppositeImpliedBps",
+            "type": "u32"
+          },
+          {
+            "name": "shortfallOwed",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cashOutReceipt",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ticket",
+            "type": "pubkey"
+          },
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "bettor",
+            "type": "pubkey"
+          },
+          {
+            "name": "paidAmount",
+            "type": "u64"
+          },
+          {
+            "name": "oppositeOddsBps",
+            "type": "u32"
+          },
+          {
+            "name": "oddsMessageId",
+            "type": "string"
+          },
+          {
+            "name": "oddsTs",
+            "type": "i64"
+          },
+          {
+            "name": "cashedTs",
+            "type": "i64"
+          },
+          {
+            "name": "auditStatus",
+            "type": {
+              "defined": {
+                "name": "auditStatus"
+              }
+            }
+          },
+          {
+            "name": "auditor",
+            "type": "pubkey"
+          },
+          {
+            "name": "shortfallOwed",
+            "type": "u64"
+          },
+          {
+            "name": "madeWhole",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cashOutRepaid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "receipt",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticket",
+            "type": "pubkey"
+          },
+          {
+            "name": "bettor",
+            "type": "pubkey"
+          },
+          {
+            "name": "auditor",
+            "type": "pubkey"
+          },
+          {
+            "name": "shortfallPaid",
+            "type": "u64"
+          },
+          {
+            "name": "bountyPaid",
+            "type": "u64"
           }
         ]
       }
@@ -1749,6 +2223,46 @@ export type Truebook = {
           {
             "name": "consensusImpliedBps",
             "type": "u32"
+          },
+          {
+            "name": "bountyPaid",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ticketCashedOut",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticket",
+            "type": "pubkey"
+          },
+          {
+            "name": "bettor",
+            "type": "pubkey"
+          },
+          {
+            "name": "paidAmount",
+            "type": "u64"
+          },
+          {
+            "name": "oppositeOddsBps",
+            "type": "u32"
+          },
+          {
+            "name": "oddsMessageId",
+            "type": "string"
+          },
+          {
+            "name": "oddsTs",
+            "type": "i64"
           }
         ]
       }
@@ -1803,6 +2317,9 @@ export type Truebook = {
           },
           {
             "name": "refunded"
+          },
+          {
+            "name": "cashedOut"
           }
         ]
       }
@@ -2252,6 +2769,11 @@ export type Truebook = {
     }
   ],
   "constants": [
+    {
+      "name": "cashoutSeed",
+      "type": "bytes",
+      "value": "[99, 97, 115, 104, 111, 117, 116]"
+    },
     {
       "name": "houseSeed",
       "type": "bytes",

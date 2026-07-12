@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 use crate::constants::{HOUSE_SEED, MARKET_SEED};
 use crate::errors::TrueBookError;
 use crate::events::MarketCreated;
+use crate::oddsmap::expected_odds_record;
 use crate::state::{House, Market, MarketParams, MarketState};
 
 #[derive(Accounts)]
@@ -29,6 +30,19 @@ pub fn handler(
     outcome_price_index: u8,
     kickoff_ts: i64,
 ) -> Result<()> {
+    // Refuse predicates that map to no TxLINE consensus record: such a market
+    // could never be priced honestly nor audited. The committed price index
+    // must be the mapped record's YES index, keeping the audit path sound.
+    let expected_record = expected_odds_record(&params)?;
+    require!(
+        outcome_price_index == expected_record.yes_price_index,
+        TrueBookError::WrongOddsRecordForMarket
+    );
+    // kickoff_ts is the betting deadline (in-play windows set it mid-match);
+    // a deadline already in the past would create a stillborn market.
+    let now = Clock::get()?.unix_timestamp;
+    require!(kickoff_ts > now, TrueBookError::KickoffPassed);
+
     let market_id = ctx.accounts.house.market_count;
     let house_key = ctx.accounts.house.key();
 

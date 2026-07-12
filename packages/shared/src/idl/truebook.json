@@ -8,6 +8,95 @@
   },
   "instructions": [
     {
+      "name": "audit_cash_out",
+      "discriminator": [
+        200,
+        10,
+        69,
+        250,
+        138,
+        87,
+        238,
+        81
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "house",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market"
+        },
+        {
+          "name": "ticket"
+        },
+        {
+          "name": "cash_out_receipt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  115,
+                  104,
+                  111,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "ticket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "daily_odds_merkle_roots",
+          "docs": [
+            "PDA derived from the proof timestamp, and the CPI validates its data."
+          ]
+        },
+        {
+          "name": "txoracle_program",
+          "address": "6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ValidateOddsArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "audit_ticket",
       "discriminator": [
         28,
@@ -52,6 +141,14 @@
           "writable": true
         },
         {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "auditor_token_account",
+          "writable": true
+        },
+        {
           "name": "daily_odds_merkle_roots",
           "docs": [
             "PDA derived from the proof timestamp, and the CPI validates its data."
@@ -60,6 +157,10 @@
         {
           "name": "txoracle_program",
           "address": "6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": [
@@ -72,6 +173,175 @@
           }
         }
       ]
+    },
+    {
+      "name": "cash_out_ticket",
+      "discriminator": [
+        16,
+        243,
+        80,
+        184,
+        62,
+        122,
+        96,
+        21
+      ],
+      "accounts": [
+        {
+          "name": "bettor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "house",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market"
+        },
+        {
+          "name": "ticket",
+          "writable": true
+        },
+        {
+          "name": "cash_out_receipt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  115,
+                  104,
+                  111,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "ticket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "bettor_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_cash_out_repair",
+      "discriminator": [
+        151,
+        90,
+        254,
+        13,
+        225,
+        87,
+        17,
+        117
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "house",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ticket"
+        },
+        {
+          "name": "cash_out_receipt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  115,
+                  104,
+                  111,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "ticket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "bettor_token_account",
+          "writable": true
+        },
+        {
+          "name": "auditor_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
     },
     {
       "name": "create_market",
@@ -843,6 +1113,19 @@
   ],
   "accounts": [
     {
+      "name": "CashOutReceipt",
+      "discriminator": [
+        247,
+        130,
+        40,
+        173,
+        90,
+        157,
+        33,
+        239
+      ]
+    },
+    {
       "name": "House",
       "discriminator": [
         21,
@@ -907,6 +1190,32 @@
         206,
         32,
         0
+      ]
+    },
+    {
+      "name": "CashOutAudited",
+      "discriminator": [
+        85,
+        217,
+        204,
+        120,
+        105,
+        165,
+        72,
+        141
+      ]
+    },
+    {
+      "name": "CashOutRepaid",
+      "discriminator": [
+        40,
+        250,
+        57,
+        173,
+        247,
+        14,
+        131,
+        199
       ]
     },
     {
@@ -1011,6 +1320,19 @@
         166,
         170,
         172
+      ]
+    },
+    {
+      "name": "TicketCashedOut",
+      "discriminator": [
+        174,
+        14,
+        251,
+        89,
+        59,
+        107,
+        29,
+        83
       ]
     },
     {
@@ -1172,6 +1494,26 @@
       "code": 6028,
       "name": "OddsRecordMismatch",
       "msg": "The audited odds record does not match the ticket's referenced quote."
+    },
+    {
+      "code": 6029,
+      "name": "UnsupportedMarketPredicate",
+      "msg": "The market predicate maps to no known TxLINE consensus record; it cannot be priced or audited."
+    },
+    {
+      "code": 6030,
+      "name": "WrongOddsRecordForMarket",
+      "msg": "The audited odds record is not the consensus record type the market's predicate commits to."
+    },
+    {
+      "code": 6031,
+      "name": "CashOutValueZero",
+      "msg": "The current quote values this ticket at zero; hold it to settlement instead."
+    },
+    {
+      "code": 6032,
+      "name": "ShortfallAlreadyPaid",
+      "msg": "This cash-out's shortfall and bounty have already been paid."
     }
   ],
   "types": [
@@ -1241,6 +1583,138 @@
           },
           {
             "name": "Subtract"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CashOutAudited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "receipt",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticket",
+            "type": "pubkey"
+          },
+          {
+            "name": "authentic",
+            "type": "bool"
+          },
+          {
+            "name": "violation",
+            "type": "bool"
+          },
+          {
+            "name": "served_opposite_implied_bps",
+            "type": "u32"
+          },
+          {
+            "name": "consensus_opposite_implied_bps",
+            "type": "u32"
+          },
+          {
+            "name": "shortfall_owed",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CashOutReceipt",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ticket",
+            "type": "pubkey"
+          },
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "bettor",
+            "type": "pubkey"
+          },
+          {
+            "name": "paid_amount",
+            "type": "u64"
+          },
+          {
+            "name": "opposite_odds_bps",
+            "type": "u32"
+          },
+          {
+            "name": "odds_message_id",
+            "type": "string"
+          },
+          {
+            "name": "odds_ts",
+            "type": "i64"
+          },
+          {
+            "name": "cashed_ts",
+            "type": "i64"
+          },
+          {
+            "name": "audit_status",
+            "type": {
+              "defined": {
+                "name": "AuditStatus"
+              }
+            }
+          },
+          {
+            "name": "auditor",
+            "type": "pubkey"
+          },
+          {
+            "name": "shortfall_owed",
+            "type": "u64"
+          },
+          {
+            "name": "made_whole",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CashOutRepaid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "receipt",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticket",
+            "type": "pubkey"
+          },
+          {
+            "name": "bettor",
+            "type": "pubkey"
+          },
+          {
+            "name": "auditor",
+            "type": "pubkey"
+          },
+          {
+            "name": "shortfall_paid",
+            "type": "u64"
+          },
+          {
+            "name": "bounty_paid",
+            "type": "u64"
           }
         ]
       }
@@ -1743,6 +2217,46 @@
           {
             "name": "consensus_implied_bps",
             "type": "u32"
+          },
+          {
+            "name": "bounty_paid",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TicketCashedOut",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticket",
+            "type": "pubkey"
+          },
+          {
+            "name": "bettor",
+            "type": "pubkey"
+          },
+          {
+            "name": "paid_amount",
+            "type": "u64"
+          },
+          {
+            "name": "opposite_odds_bps",
+            "type": "u32"
+          },
+          {
+            "name": "odds_message_id",
+            "type": "string"
+          },
+          {
+            "name": "odds_ts",
+            "type": "i64"
           }
         ]
       }
@@ -1797,6 +2311,9 @@
           },
           {
             "name": "Refunded"
+          },
+          {
+            "name": "CashedOut"
           }
         ]
       }
@@ -2246,6 +2763,11 @@
     }
   ],
   "constants": [
+    {
+      "name": "CASHOUT_SEED",
+      "type": "bytes",
+      "value": "[99, 97, 115, 104, 111, 117, 116]"
+    },
     {
       "name": "HOUSE_SEED",
       "type": "bytes",

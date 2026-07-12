@@ -1,18 +1,22 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::constants::{
-    BPS_DENOMINATOR, AUDIT_TOLERANCE_BPS, HOUSE_SEED, MILLISECONDS_PER_DAY_I64, ODDS_BPS_SCALE,
-    TXLINE_DAILY_BATCH_SEED, TXLINE_PRICE_DECIMAL_SCALE, TXLINE_PROGRAM_ID,
+    AUDIT_BOUNTY_BPS, AUDIT_TOLERANCE_BPS, BPS_DENOMINATOR, HOUSE_SEED,
+    MILLISECONDS_PER_DAY_I64, ODDS_BPS_SCALE, TXLINE_DAILY_BATCH_SEED,
+    TXLINE_PRICE_DECIMAL_SCALE, TXLINE_PROGRAM_ID,
 };
 use crate::errors::TrueBookError;
 use crate::events::TicketAudited;
-use crate::math::{implied_prob_bps, is_price_within_margin};
+use crate::math::{bounty_amount, implied_prob_bps, is_price_within_margin};
+use crate::oddsmap::{expected_odds_record, record_matches_expectation};
 use crate::state::{AuditStatus, House, Market, Side, Ticket, TicketState};
 use crate::txline_cpi::{invoke_validate_odds, ValidateOddsArgs};
 
 // Permissionless: prove the odds record a ticket was priced from is authentic TxLINE
 // consensus data, then check the served price against that consensus plus the stated
-// margin. A proven overcharge flags the ticket refundable, even a losing one.
+// margin. A proven overcharge flags the ticket refundable, even a losing one, and
+// pays the auditor the audit-to-earn bounty from the vault's free liquidity.
 #[derive(Accounts)]
 #[instruction(args: ValidateOddsArgs)]
 pub struct AuditTicket<'info> {
@@ -26,12 +30,18 @@ pub struct AuditTicket<'info> {
         constraint = ticket.market == market.key() @ TrueBookError::TicketMarketMismatch
     )]
     pub ticket: Account<'info, Ticket>,
+    #[account(mut, address = house.vault)]
+    pub vault: Account<'info, TokenAccount>,
+    // The auditor picks where the bounty lands; only the mint is constrained.
+    #[account(mut, token::mint = house.usdt_mint)]
+    pub auditor_token_account: Account<'info, TokenAccount>,
     /// CHECK: the TxLINE daily odds (batch) roots PDA. Its key is checked against the
     /// PDA derived from the proof timestamp, and the CPI validates its data.
     pub daily_odds_merkle_roots: AccountInfo<'info>,
     /// CHECK: the TxLINE oracle program, pinned by address.
     #[account(address = TXLINE_PROGRAM_ID)]
     pub txoracle_program: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
 }
 
 pub fn handler(ctx: Context<AuditTicket>, args: ValidateOddsArgs) -> Result<()> {
@@ -44,6 +54,19 @@ pub fn handler(ctx: Context<AuditTicket>, args: ValidateOddsArgs) -> Result<()> 
     require!(
         args.odds_snapshot.fixture_id == ctx.accounts.market.fixture_id,
         TrueBookError::FixtureMismatch
+    );
+    // And it must be the consensus record type the market's predicate commits
+    // to (right SuperOddsType, right line, right period), so a keeper cannot
+    // price one question and be audited against a cheaper record.
+    let expected = expected_odds_record(&ctx.accounts.market.params)?;
+    require!(
+        record_matches_expectation(
+            &expected,
+            &args.odds_snapshot.super_odds_type,
+            &args.odds_snapshot.market_parameters,
+            &args.odds_snapshot.market_period,
+        ),
+        TrueBookError::WrongOddsRecordForMarket
     );
 
     // The daily-odds account must be the PDA for the proof timestamp's epoch day.
@@ -68,7 +91,7 @@ pub fn handler(ctx: Context<AuditTicket>, args: ValidateOddsArgs) -> Result<()> 
     require!(authentic, TrueBookError::OddsNotAuthentic);
 
     // Consensus implied probability for the market's committed YES outcome.
-    let price_index = ctx.accounts.market.outcome_price_index as usize;
+    let price_index = expected.yes_price_index as usize;
     let raw_price = *args
         .odds_snapshot
         .prices
@@ -101,6 +124,36 @@ pub fn handler(ctx: Context<AuditTicket>, args: ValidateOddsArgs) -> Result<()> 
         AUDIT_TOLERANCE_BPS,
     )?;
 
+    // Audit-to-earn: the FIRST proven violation pays the auditor. The verdict
+    // is deterministic per record, so the transition guard is what prevents
+    // draining the vault by re-auditing the same ticket.
+    let was_already_violation = ctx.accounts.ticket.audit_status == AuditStatus::Violation;
+    let mut bounty_paid: u64 = 0;
+    if !honest && !was_already_violation {
+        let free_liquidity = ctx
+            .accounts
+            .vault
+            .amount
+            .saturating_sub(ctx.accounts.house.open_exposure);
+        bounty_paid = bounty_amount(ctx.accounts.ticket.stake, AUDIT_BOUNTY_BPS, free_liquidity)?;
+        if bounty_paid > 0 {
+            let house_bump = ctx.accounts.house.bump;
+            let signer_seeds: &[&[&[u8]]] = &[&[HOUSE_SEED, &[house_bump]]];
+            token::transfer(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.vault.to_account_info(),
+                        to: ctx.accounts.auditor_token_account.to_account_info(),
+                        authority: ctx.accounts.house.to_account_info(),
+                    },
+                    signer_seeds,
+                ),
+                bounty_paid,
+            )?;
+        }
+    }
+
     let ticket = &mut ctx.accounts.ticket;
     if honest {
         ticket.audit_status = AuditStatus::Honest;
@@ -122,6 +175,7 @@ pub fn handler(ctx: Context<AuditTicket>, args: ValidateOddsArgs) -> Result<()> 
         violation: !honest,
         served_implied_bps: served_implied,
         consensus_implied_bps: consensus_implied,
+        bounty_paid,
     });
     Ok(())
 }

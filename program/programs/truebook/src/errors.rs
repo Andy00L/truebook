@@ -62,4 +62,12 @@ pub enum TrueBookError {
     InvalidRootAccount,
     #[msg("The audited odds record does not match the ticket's referenced quote.")]
     OddsRecordMismatch,
+    #[msg("The market predicate maps to no known TxLINE consensus record; it cannot be priced or audited.")]
+    UnsupportedMarketPredicate,
+    #[msg("The audited odds record is not the consensus record type the market's predicate commits to.")]
+    WrongOddsRecordForMarket,
+    #[msg("The current quote values this ticket at zero; hold it to settlement instead.")]
+    CashOutValueZero,
+    #[msg("This cash-out's shortfall and bounty have already been paid.")]
+    ShortfallAlreadyPaid,
 }

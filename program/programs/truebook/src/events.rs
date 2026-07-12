@@ -68,6 +68,42 @@ pub struct TicketAudited {
     pub violation: bool,
     pub served_implied_bps: u32,
     pub consensus_implied_bps: u32,
+    // Audit-to-earn bounty paid to the auditor on a first proven violation.
+    pub bounty_paid: u64,
+}
+
+#[event]
+pub struct TicketCashedOut {
+    pub market: Pubkey,
+    pub ticket: Pubkey,
+    pub bettor: Pubkey,
+    pub paid_amount: u64,
+    // The opposite side's served odds the value derived from, with provenance.
+    pub opposite_odds_bps: u32,
+    pub odds_message_id: String,
+    pub odds_ts: i64,
+}
+
+#[event]
+pub struct CashOutAudited {
+    pub receipt: Pubkey,
+    pub ticket: Pubkey,
+    pub authentic: bool,
+    pub violation: bool,
+    pub served_opposite_implied_bps: u32,
+    pub consensus_opposite_implied_bps: u32,
+    // Underpayment recorded against the honest floor; claim_cash_out_repair pays it.
+    pub shortfall_owed: u64,
+}
+
+#[event]
+pub struct CashOutRepaid {
+    pub receipt: Pubkey,
+    pub ticket: Pubkey,
+    pub bettor: Pubkey,
+    pub auditor: Pubkey,
+    pub shortfall_paid: u64,
+    pub bounty_paid: u64,
 }
 
 #[event]

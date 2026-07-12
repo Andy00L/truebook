@@ -28,6 +28,8 @@ pub const TICKET_SEED: &[u8] = b"ticket";
 pub const OUTCOME_SEED: &[u8] = b"outcome";
 #[constant]
 pub const VAULT_SEED: &[u8] = b"vault";
+#[constant]
+pub const CASHOUT_SEED: &[u8] = b"cashout";
 
 // Basis-points denominator. Odds and margins are expressed in basis points.
 pub const BPS_DENOMINATOR: u64 = 10_000;
@@ -56,3 +58,30 @@ pub const DEFAULT_MARGIN_BPS: u16 = 200;
 // Audit tolerance in basis points: how far the served implied probability may sit
 // above the proven consensus before the margin, before it counts as a violation.
 pub const AUDIT_TOLERANCE_BPS: u16 = 25;
+
+// Audit-to-earn: share of the ticket stake paid from the house vault to the
+// first auditor who proves a price violation, in basis points (5 percent).
+// Paid only out of free liquidity so open-ticket payouts stay fully covered.
+pub const AUDIT_BOUNTY_BPS: u16 = 500;
+
+// TxLINE StablePrice record shapes, keyed by SuperOddsType. An audit derives the
+// record shape a market's quotes must come from directly from the committed
+// predicate, so a keeper cannot price one question and audit against another.
+// sourceRef: TxLINE devnet odds capture .scratch/odds-updates-18172379.json
+// (also mirrored in packages/shared/src/marketCatalog.ts).
+pub const SUPER_ODDS_1X2: &str = "1X2_PARTICIPANT_RESULT";
+pub const SUPER_ODDS_OVER_UNDER: &str = "OVERUNDER_PARTICIPANT_GOALS";
+pub const SUPER_ODDS_ASIAN_HANDICAP: &str = "ASIANHANDICAP_PARTICIPANT_GOALS";
+
+// MarketPeriod strings as the feed emits them. Full time records carry None.
+// sourceRef: .scratch/odds-updates-18172379.json.
+pub const MARKET_PERIOD_FIRST_HALF: &str = "half=1";
+
+// TxLINE score stat keys and periods used by the supported predicates.
+// sourceRef: packages/shared/src/config.ts (STAT_KEY_PARTICIPANT1_GOALS,
+// STAT_KEY_PARTICIPANT2_GOALS, STAT_PERIOD_TOTAL) and the scores snapshot
+// capture .scratch/snapshot-18172379.json (period 1 = first half).
+pub const STAT_KEY_P1_GOALS: u32 = 1;
+pub const STAT_KEY_P2_GOALS: u32 = 2;
+pub const STAT_PERIOD_TOTAL: i32 = 0;
+pub const STAT_PERIOD_FIRST_HALF: i32 = 1;

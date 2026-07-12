@@ -15,6 +15,9 @@ pub mod audit_ticket;
 pub mod settle_ticket;
 pub mod void_market;
 pub mod refund_ticket;
+pub mod cash_out;
+pub mod audit_cash_out;
+pub mod claim_cash_out_repair;
 
 pub use initialize_house::*;
 pub use manage_liquidity::*;
@@ -27,3 +30,6 @@ pub use audit_ticket::*;
 pub use settle_ticket::*;
 pub use void_market::*;
 pub use refund_ticket::*;
+pub use cash_out::*;
+pub use audit_cash_out::*;
+pub use claim_cash_out_repair::*;

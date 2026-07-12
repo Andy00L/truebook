@@ -59,6 +59,45 @@ pub fn is_price_within_margin(
     Ok(served_implied_bps <= allowed)
 }
 
+// Cash-out value of a live ticket: the vault buys the ticket back for the
+// payout weighted by the complement of the OPPOSITE side's implied probability.
+// The opposite side's served implied already carries the house margin (it sits
+// above consensus), so its complement sits below the fair value of the ticket:
+// the margin lands in the house's favor without a second haircut, and the whole
+// price is derived from the on-chain quote, which validate_odds can audit.
+// value = payout * (BPS_DENOMINATOR - opposite_implied_bps) / BPS_DENOMINATOR.
+pub fn cash_out_value(
+    potential_payout: u64,
+    opposite_implied_bps: u32,
+) -> Result<u64, TrueBookError> {
+    let complement = (BPS_DENOMINATOR as u128)
+        .checked_sub(opposite_implied_bps as u128)
+        .ok_or(TrueBookError::MathOverflow)?;
+    let numerator = (potential_payout as u128)
+        .checked_mul(complement)
+        .ok_or(TrueBookError::MathOverflow)?;
+    let value = numerator
+        .checked_div(BPS_DENOMINATOR as u128)
+        .ok_or(TrueBookError::MathOverflow)?;
+    u64::try_from(value).map_err(|_| TrueBookError::MathOverflow)
+}
+
+// Audit-to-earn bounty: bounty_bps of the stake, capped by the vault's free
+// liquidity so reserved payouts of live tickets are never spent on bounties.
+pub fn bounty_amount(
+    stake: u64,
+    bounty_bps: u16,
+    free_liquidity: u64,
+) -> Result<u64, TrueBookError> {
+    let raw = (stake as u128)
+        .checked_mul(bounty_bps as u128)
+        .ok_or(TrueBookError::MathOverflow)?
+        .checked_div(BPS_DENOMINATOR as u128)
+        .ok_or(TrueBookError::MathOverflow)?;
+    let raw = u64::try_from(raw).map_err(|_| TrueBookError::MathOverflow)?;
+    Ok(raw.min(free_liquidity))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -88,5 +127,33 @@ mod tests {
         assert!(is_price_within_margin(5_125, 5_000, 200, 25).unwrap());
         // 5200 exceeds 5100 + 25 tolerance: a violation.
         assert!(!is_price_within_margin(5_200, 5_000, 200, 25).unwrap());
+    }
+
+    #[test]
+    fn cash_out_pays_the_opposite_complement() {
+        // Payout 206 USDT, opposite side implied 52 percent: value = 206 * 0.48.
+        assert_eq!(cash_out_value(206_000_000, 5_200).unwrap(), 98_880_000);
+        // Opposite side certain (100 percent) values the ticket at zero.
+        assert_eq!(cash_out_value(206_000_000, 10_000).unwrap(), 0);
+    }
+
+    #[test]
+    fn cash_out_sits_below_fair_value() {
+        // Fair ticket value at consensus 50/50 on a 206 payout is 103. With a
+        // 2 percent margin the opposite side is served at implied 51 percent,
+        // so the cash-out (206 * 0.49 = 100.94) stays under fair value.
+        let value = cash_out_value(206_000_000, 5_100).unwrap();
+        assert!(value < 103_000_000);
+        assert_eq!(value, 100_940_000);
+    }
+
+    #[test]
+    fn bounty_is_five_percent_capped_by_free_liquidity() {
+        // 5 percent of a 100 USDT stake is 5 USDT when liquidity allows.
+        assert_eq!(bounty_amount(100_000_000, 500, 50_000_000).unwrap(), 5_000_000);
+        // The cap wins when free liquidity is thinner than the bounty.
+        assert_eq!(bounty_amount(100_000_000, 500, 1_250_000).unwrap(), 1_250_000);
+        // An empty vault pays nothing but the audit itself still lands.
+        assert_eq!(bounty_amount(100_000_000, 500, 0).unwrap(), 0);
     }
 }

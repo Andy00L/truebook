@@ -298,6 +298,7 @@ describe("truebook", () => {
   it("audits the served price against consensus and finds it honest", async () => {
     const oddsArgs = buildOddsArgs(oddsValidation);
 
+    const auditorBalanceBefore = (await getAccount(provider.connection, operatorTokenAccount)).amount;
     await program.methods
       .auditTicket(oddsArgs)
       .accounts({
@@ -305,6 +306,8 @@ describe("truebook", () => {
         house: housePda,
         market: marketPda,
         ticket: ticketPda,
+        vault: vaultPda,
+        auditorTokenAccount: operatorTokenAccount,
         dailyOddsMerkleRoots: ODDS_ROOT_PDA,
         txoracleProgram: TXORACLE_PROGRAM,
       })
@@ -313,6 +316,12 @@ describe("truebook", () => {
 
     const ticket = await program.account.ticket.fetch(ticketPda);
     assert.deepEqual(ticket.auditStatus, { honest: {} });
+    const auditorBalanceAfter = (await getAccount(provider.connection, operatorTokenAccount)).amount;
+    assert.equal(
+      (auditorBalanceAfter - auditorBalanceBefore).toString(),
+      "0",
+      "an honest verdict pays no bounty",
+    );
   });
 
   it("refunds a losing ticket even when the house settles before the audit", async () => {
@@ -411,7 +420,9 @@ describe("truebook", () => {
       "after settling NO, exposure equals the live YES ticket payout",
     );
 
-    // The audit still catches the overcharge and reopens the Lost ticket.
+    // The audit still catches the overcharge and reopens the Lost ticket,
+    // paying the auditor the audit-to-earn bounty (5 percent of the stake).
+    const auditorBalanceBefore = (await getAccount(provider.connection, operatorTokenAccount)).amount;
     await program.methods
       .auditTicket(buildOddsArgs(oddsValidation))
       .accounts({
@@ -419,6 +430,8 @@ describe("truebook", () => {
         house: housePda,
         market: market2Pda,
         ticket: ticketNoPda,
+        vault: vaultPda,
+        auditorTokenAccount: operatorTokenAccount,
         dailyOddsMerkleRoots: ODDS_ROOT_PDA,
         txoracleProgram: TXORACLE_PROGRAM,
       })
@@ -427,6 +440,34 @@ describe("truebook", () => {
     ticketNo = await program.account.ticket.fetch(ticketNoPda);
     assert.deepEqual(ticketNo.auditStatus, { violation: {} }, "audit proves the overcharge");
     assert.deepEqual(ticketNo.state, { refundable: {} }, "a settled Lost ticket becomes refundable");
+    const auditorBalanceAfter = (await getAccount(provider.connection, operatorTokenAccount)).amount;
+    assert.equal(
+      (auditorBalanceAfter - auditorBalanceBefore).toString(),
+      noStake.divn(20).toString(),
+      "the auditor earns 5 percent of the stake on a proven violation",
+    );
+
+    // A second audit of the same ticket must not pay the bounty again.
+    await program.methods
+      .auditTicket(buildOddsArgs(oddsValidation))
+      .accounts({
+        cranker: operator.publicKey,
+        house: housePda,
+        market: market2Pda,
+        ticket: ticketNoPda,
+        vault: vaultPda,
+        auditorTokenAccount: operatorTokenAccount,
+        dailyOddsMerkleRoots: ODDS_ROOT_PDA,
+        txoracleProgram: TXORACLE_PROGRAM,
+      })
+      .preInstructions([anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 })])
+      .rpc();
+    const auditorBalanceAfterRepeat = (await getAccount(provider.connection, operatorTokenAccount)).amount;
+    assert.equal(
+      (auditorBalanceAfterRepeat - auditorBalanceAfter).toString(),
+      "0",
+      "re-auditing the same violation pays nothing",
+    );
 
     // Refund returns the full stake without double-releasing exposure.
     const balanceBefore = (await getAccount(provider.connection, bettorTokenAccount)).amount;
@@ -468,5 +509,244 @@ describe("truebook", () => {
       .rpc();
     const houseFinal = await program.account.house.fetch(housePda);
     assert.equal(houseFinal.openExposure.toString(), "0", "all exposure released exactly once");
+  });
+
+  it("cashes out a live ticket at the on-chain quote and audits it honest", async () => {
+    // Market #2 (third market): honest quote, YES bet, immediate cash-out.
+    const [market3Pda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("market"), housePda.toBuffer(), new BN(2).toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+    const cashNonce = new BN(4);
+    const [ticketCashPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("ticket"), market3Pda.toBuffer(), bettor.publicKey.toBuffer(), cashNonce.toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+    const [receiptPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("cashout"), ticketCashPda.toBuffer()],
+      program.programId,
+    );
+    const cashStake = new BN(10_000_000); // 10 USDT at 1.58 = 15.80 payout
+
+    const kickoffTs = new BN(Math.floor(Date.now() / 1000) + 60);
+    await program.methods
+      .createMarket(FIXTURE_ID, marketParams, 0, kickoffTs)
+      .accounts({ authority: operator.publicKey, house: housePda, market: market3Pda })
+      .rpc();
+    await program.methods
+      .postQuote(yesOddsBps, noOddsBps, oddsValidation.odds.MessageId, new BN(oddsValidation.odds.Ts))
+      .accounts({ keeper: operator.publicKey, house: housePda, market: market3Pda })
+      .rpc();
+    await program.methods
+      .placeBet(cashNonce, { yes: {} }, cashStake)
+      .accounts({
+        bettor: bettor.publicKey,
+        house: housePda,
+        market: market3Pda,
+        ticket: ticketCashPda,
+        vault: vaultPda,
+        bettorTokenAccount,
+      })
+      .signers([bettor])
+      .rpc();
+
+    // Expected on-chain value: payout 15.80, NO odds 3.00 (implied 3333 bps),
+    // value = 15_800_000 * (10_000 - 3_333) / 10_000.
+    const expectedPaid = new BN(15_800_000).muln(10_000 - 3_333).divn(10_000);
+    const balanceBefore = (await getAccount(provider.connection, bettorTokenAccount)).amount;
+    await program.methods
+      .cashOutTicket()
+      .accounts({
+        bettor: bettor.publicKey,
+        house: housePda,
+        market: market3Pda,
+        ticket: ticketCashPda,
+        vault: vaultPda,
+        bettorTokenAccount,
+      })
+      .signers([bettor])
+      .rpc();
+    const balanceAfter = (await getAccount(provider.connection, bettorTokenAccount)).amount;
+    assert.equal(
+      (balanceAfter - balanceBefore).toString(),
+      expectedPaid.toString(),
+      "cash-out pays payout times the opposite-side complement",
+    );
+
+    const cashedTicket = await program.account.ticket.fetch(ticketCashPda);
+    assert.deepEqual(cashedTicket.state, { cashedOut: {} });
+    assert.equal(cashedTicket.exposureReleased, true);
+    const houseAfterCashOut = await program.account.house.fetch(housePda);
+    assert.equal(houseAfterCashOut.openExposure.toString(), "0", "cash-out releases the reserved payout");
+
+    const receipt = await program.account.cashOutReceipt.fetch(receiptPda);
+    assert.equal(receipt.paidAmount.toString(), expectedPaid.toString());
+    assert.equal(receipt.oppositeOddsBps, noOddsBps);
+    assert.equal(receipt.oddsMessageId, oddsValidation.odds.MessageId);
+    assert.deepEqual(receipt.auditStatus, { unaudited: {} });
+
+    // The audit proves the honest quote honest: nothing owed, nothing claimable.
+    await program.methods
+      .auditCashOut(buildOddsArgs(oddsValidation))
+      .accounts({
+        cranker: operator.publicKey,
+        house: housePda,
+        market: market3Pda,
+        ticket: ticketCashPda,
+        dailyOddsMerkleRoots: ODDS_ROOT_PDA,
+        txoracleProgram: TXORACLE_PROGRAM,
+      })
+      .preInstructions([anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 })])
+      .rpc();
+    const auditedReceipt = await program.account.cashOutReceipt.fetch(receiptPda);
+    assert.deepEqual(auditedReceipt.auditStatus, { honest: {} });
+    assert.equal(auditedReceipt.madeWhole, false);
+    assert.equal(auditedReceipt.shortfallOwed.toString(), "0");
+
+    // Claiming a repair on an honest verdict must fail.
+    try {
+      await program.methods
+        .claimCashOutRepair()
+        .accounts({
+          cranker: operator.publicKey,
+          house: housePda,
+          ticket: ticketCashPda,
+          vault: vaultPda,
+          bettorTokenAccount,
+          auditorTokenAccount: operatorTokenAccount,
+        })
+        .rpc();
+      assert.fail("claim on an honest cash-out must be rejected");
+    } catch (claimError) {
+      assert.include(String(claimError), "NoPriceViolation");
+    }
+  });
+
+  it("repays a lowballed cash-out and pays the auditor when the audit proves it", async () => {
+    // Market #3 (fourth market): the house lowballs cash-outs by overcharging
+    // the NO side (2.00 instead of the fair ~2.63), which drags the YES
+    // ticket's cash-out value down. The audit proves it from the same record.
+    const [market4Pda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("market"), housePda.toBuffer(), new BN(3).toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+    const riggedNonce = new BN(5);
+    const [ticketRiggedPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("ticket"), market4Pda.toBuffer(), bettor.publicKey.toBuffer(), riggedNonce.toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+    const [receiptRiggedPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("cashout"), ticketRiggedPda.toBuffer()],
+      program.programId,
+    );
+    const riggedNoOddsBps = 20_000; // 2.00 decimal: implied 50 percent, far past margin
+    const riggedStake = new BN(10_000_000);
+
+    const kickoffTs = new BN(Math.floor(Date.now() / 1000) + 60);
+    await program.methods
+      .createMarket(FIXTURE_ID, marketParams, 0, kickoffTs)
+      .accounts({ authority: operator.publicKey, house: housePda, market: market4Pda })
+      .rpc();
+    await program.methods
+      .postQuote(yesOddsBps, riggedNoOddsBps, oddsValidation.odds.MessageId, new BN(oddsValidation.odds.Ts))
+      .accounts({ keeper: operator.publicKey, house: housePda, market: market4Pda })
+      .rpc();
+    await program.methods
+      .placeBet(riggedNonce, { yes: {} }, riggedStake)
+      .accounts({
+        bettor: bettor.publicKey,
+        house: housePda,
+        market: market4Pda,
+        ticket: ticketRiggedPda,
+        vault: vaultPda,
+        bettorTokenAccount,
+      })
+      .signers([bettor])
+      .rpc();
+
+    // Lowballed value: 15.80 * (10000 - 5000) / 10000 = 7.90 USDT.
+    await program.methods
+      .cashOutTicket()
+      .accounts({
+        bettor: bettor.publicKey,
+        house: housePda,
+        market: market4Pda,
+        ticket: ticketRiggedPda,
+        vault: vaultPda,
+        bettorTokenAccount,
+      })
+      .signers([bettor])
+      .rpc();
+    const riggedReceipt = await program.account.cashOutReceipt.fetch(receiptRiggedPda);
+    assert.equal(riggedReceipt.paidAmount.toString(), "7900000");
+
+    // Audit: consensus YES 1.613 -> implied 6199, NO consensus 3801, allowed
+    // floor implied 3877; honest floor value 15.80 * (10000-3877)/10000 =
+    // 9.674340. The verdict records shortfall 1.774340 and the auditor.
+    await program.methods
+      .auditCashOut(buildOddsArgs(oddsValidation))
+      .accounts({
+        cranker: operator.publicKey,
+        house: housePda,
+        market: market4Pda,
+        ticket: ticketRiggedPda,
+        dailyOddsMerkleRoots: ODDS_ROOT_PDA,
+        txoracleProgram: TXORACLE_PROGRAM,
+      })
+      .preInstructions([anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 })])
+      .rpc();
+
+    const auditedReceipt = await program.account.cashOutReceipt.fetch(receiptRiggedPda);
+    assert.deepEqual(auditedReceipt.auditStatus, { violation: {} });
+    assert.equal(auditedReceipt.madeWhole, false);
+    assert.equal(auditedReceipt.shortfallOwed.toString(), "1774340");
+    assert.equal(auditedReceipt.auditor.toBase58(), operator.publicKey.toBase58());
+
+    // The claim pays the bettor's shortfall and the auditor's 5 percent bounty.
+    const bettorBalanceBefore = (await getAccount(provider.connection, bettorTokenAccount)).amount;
+    const auditorBalanceBefore = (await getAccount(provider.connection, operatorTokenAccount)).amount;
+    await program.methods
+      .claimCashOutRepair()
+      .accounts({
+        cranker: operator.publicKey,
+        house: housePda,
+        ticket: ticketRiggedPda,
+        vault: vaultPda,
+        bettorTokenAccount,
+        auditorTokenAccount: operatorTokenAccount,
+      })
+      .rpc();
+    const repairedReceipt = await program.account.cashOutReceipt.fetch(receiptRiggedPda);
+    assert.equal(repairedReceipt.madeWhole, true);
+    const bettorBalanceAfter = (await getAccount(provider.connection, bettorTokenAccount)).amount;
+    assert.equal(
+      (bettorBalanceAfter - bettorBalanceBefore).toString(),
+      "1774340",
+      "the bettor is repaid up to the honest floor",
+    );
+    const auditorBalanceAfter = (await getAccount(provider.connection, operatorTokenAccount)).amount;
+    assert.equal(
+      (auditorBalanceAfter - auditorBalanceBefore).toString(),
+      riggedStake.divn(20).toString(),
+      "the auditor earns 5 percent of the stake",
+    );
+
+    // A second claim must not repay or reward twice.
+    try {
+      await program.methods
+        .claimCashOutRepair()
+        .accounts({
+          cranker: operator.publicKey,
+          house: housePda,
+          ticket: ticketRiggedPda,
+          vault: vaultPda,
+          bettorTokenAccount,
+          auditorTokenAccount: operatorTokenAccount,
+        })
+        .rpc();
+      assert.fail("a second claim must be rejected");
+    } catch (claimError) {
+      assert.include(String(claimError), "ShortfallAlreadyPaid");
+    }
   });
 });

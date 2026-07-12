@@ -21,7 +21,8 @@ pub enum MarketState {
     Voided,
 }
 
-// Lifecycle of a ticket.
+// Lifecycle of a ticket. CashedOut is appended last so existing on-chain
+// tickets (tags 0 to 5) keep deserializing unchanged after the upgrade.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum TicketState {
     Live,
@@ -30,6 +31,7 @@ pub enum TicketState {
     Claimed,
     Refundable,
     Refunded,
+    CashedOut,
 }
 
 // Result of a price audit against the TxLINE consensus.
@@ -151,5 +153,34 @@ pub struct VerifiedOutcome {
     pub outcome: bool,
     pub seq: u32,
     pub verified_ts: i64,
+    pub bump: u8,
+}
+
+// The receipt of a cash-out. PDA seed ["cashout", ticket]. Written at
+// cash-out; audit_cash_out later proves the quote it was priced from against
+// the TxLINE consensus (exactly like audit_ticket proves an opening price)
+// and records the verdict, and claim_cash_out_repair pays what is owed.
+#[account]
+#[derive(InitSpace)]
+pub struct CashOutReceipt {
+    pub ticket: Pubkey,
+    pub market: Pubkey,
+    pub bettor: Pubkey,
+    // What the vault paid for the ticket.
+    pub paid_amount: u64,
+    // The opposite side's served odds the value derived from, with the
+    // provenance of the quote they came from (auditable via validate_odds).
+    pub opposite_odds_bps: u32,
+    #[max_len(MAX_ODDS_MESSAGE_ID_LEN)]
+    pub odds_message_id: String,
+    pub odds_ts: i64,
+    pub cashed_ts: i64,
+    pub audit_status: AuditStatus,
+    // Set by a Violation verdict: who proved it (earns the bounty) and how
+    // far below the honest floor the payment sat.
+    pub auditor: Pubkey,
+    pub shortfall_owed: u64,
+    // True once claim_cash_out_repair has paid the shortfall and bounty.
+    pub made_whole: bool,
     pub bump: u8,
 }

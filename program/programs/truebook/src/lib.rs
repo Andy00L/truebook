@@ -8,6 +8,7 @@ pub mod constants;
 pub mod errors;
 pub mod events;
 pub mod math;
+pub mod oddsmap;
 pub mod state;
 pub mod txline_cpi;
 pub mod instructions;
@@ -98,5 +99,25 @@ pub mod truebook {
     // Refund a ticket on a voided market, or one flagged refundable by an audit.
     pub fn refund_ticket(ctx: Context<RefundTicket>) -> Result<()> {
         instructions::refund_ticket::handler(ctx)
+    }
+
+    // Sell a live ticket back to the vault at a price derived on-chain from the
+    // market's current quote; the receipt keeps the quote's provenance so the
+    // price is auditable.
+    pub fn cash_out_ticket(ctx: Context<CashOutTicket>) -> Result<()> {
+        instructions::cash_out::handler(ctx)
+    }
+
+    // Audit a cash-out's price against the TxLINE consensus by CPI into
+    // validate_odds; a proven underpayment records the shortfall and the
+    // auditor's bounty claim on the receipt.
+    pub fn audit_cash_out(ctx: Context<AuditCashOut>, args: ValidateOddsArgs) -> Result<()> {
+        instructions::audit_cash_out::handler(ctx, args)
+    }
+
+    // Pay a proven cash-out violation: the bettor's shortfall and the
+    // auditor's bounty; permissionless crank.
+    pub fn claim_cash_out_repair(ctx: Context<ClaimCashOutRepair>) -> Result<()> {
+        instructions::claim_cash_out_repair::handler(ctx)
     }
 }
