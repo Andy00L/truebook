@@ -34,6 +34,13 @@ export function ticketPda(
   )[0];
 }
 
+export function cashOutReceiptPda(programId: PublicKey, ticket: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("cashout"), ticket.toBuffer()],
+    programId,
+  )[0];
+}
+
 // TxLINE daily-root PDAs, derived on the TxLINE program from a proof timestamp.
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 

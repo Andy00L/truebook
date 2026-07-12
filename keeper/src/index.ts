@@ -6,9 +6,11 @@
 //   settle <market>      prove a locked market's outcome and pay its tickets
 //   rig <market> [factor] post one overcharged NO quote for the sting demo
 //   bet <market> <yes|no> <stake>  ops bet from the keeper wallet (rehearsal)
+//   cashout <ticket>     ops cash-out of a keeper ticket at the current quote
 //   audit <ticket>       prove the ticket's served price against consensus
+//   audit-cashout <receipt>  prove a cash-out's price against consensus
 //   refund <ticket>      refund a refundable ticket's stake to its bettor
-//   serve [seconds]      loop lock + fresh quotes + re-rig so anyone can bet
+//   serve [seconds]      loop markets + in-play + quotes + settle + re-rig
 
 import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
@@ -19,7 +21,9 @@ import { listBoard } from "./list.js";
 import { acquireTxlineAuth } from "./txlineAuth.js";
 import {
   DEFAULT_RIG_FACTOR,
+  auditCashOutWithProof,
   auditTicketWithProof,
+  cashOutFromKeeper,
   createMarketsForFixtures,
   lockDueMarkets,
   placeBetFromKeeper,
@@ -77,6 +81,15 @@ async function runTickOrSettle(command: string, marketArg: string | undefined): 
       process.exit(1);
     }
     await auditTicketWithProof(program, auth, new PublicKey(marketArg));
+    return;
+  }
+
+  if (command === "audit-cashout") {
+    if (!marketArg) {
+      console.error("[main] usage: audit-cashout <receiptPubkey>");
+      process.exit(1);
+    }
+    await auditCashOutWithProof(program, auth, new PublicKey(marketArg));
     return;
   }
 
@@ -158,6 +171,19 @@ async function main(): Promise<void> {
     if (!betPlaced) process.exit(1);
     return;
   }
+  if (command === "cashout") {
+    const ticketArg = process.argv[3];
+    if (!ticketArg) {
+      console.error("[main] usage: cashout <ticketPubkey>");
+      process.exit(1);
+    }
+    const connection = getConnection();
+    const keypair = loadKeeperKeypair();
+    const program = buildProgram(connection, keypair);
+    const cashedOut = await cashOutFromKeeper(program, keypair, new PublicKey(ticketArg));
+    if (!cashedOut) process.exit(1);
+    return;
+  }
   if (command === "refund") {
     const ticketArg = process.argv[3];
     if (!ticketArg) {
@@ -171,7 +197,7 @@ async function main(): Promise<void> {
     if (!refunded) process.exit(1);
     return;
   }
-  // tick, settle, rig, audit, and serve all authenticate to TxLINE first.
+  // tick, settle, rig, audit, audit-cashout, and serve authenticate to TxLINE first.
   await runTickOrSettle(command, process.argv[3]);
 }
 

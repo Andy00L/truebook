@@ -7,12 +7,30 @@
 
 import { BN } from "@coral-xyz/anchor";
 import type { ScoresStatValidation, OddsValidation, ProofNode } from "@truebook/shared";
-import type { MarketDefinition } from "./catalog.js";
+import {
+  ANCHOR_CMP_EQUAL_TO,
+  ANCHOR_CMP_GREATER_THAN,
+  ANCHOR_CMP_LESS_THAN,
+  ANCHOR_OP_ADD,
+  ANCHOR_OP_SUBTRACT,
+  type NormalizedMarketParams,
+} from "@truebook/shared";
 
 const mapProof = (nodes: ProofNode[]) =>
   nodes.map((node) => ({ hash: node.hash, isRightSibling: node.isRightSibling }));
 
-export function buildStatArgs(proof: ScoresStatValidation, definition: MarketDefinition) {
+function anchorComparison(params: NormalizedMarketParams) {
+  if (params.comparison === "greaterThan") return ANCHOR_CMP_GREATER_THAN;
+  if (params.comparison === "lessThan") return ANCHOR_CMP_LESS_THAN;
+  return ANCHOR_CMP_EQUAL_TO;
+}
+
+function anchorOp(params: NormalizedMarketParams) {
+  if (!params.hasStatB) return null;
+  return params.op === "add" ? ANCHOR_OP_ADD : ANCHOR_OP_SUBTRACT;
+}
+
+export function buildStatArgs(proof: ScoresStatValidation, params: NormalizedMarketParams) {
   return {
     ts: new BN(proof.summary.updateStats.minTimestamp),
     fixtureSummary: {
@@ -26,21 +44,21 @@ export function buildStatArgs(proof: ScoresStatValidation, definition: MarketDef
     },
     fixtureProof: mapProof(proof.subTreeProof),
     mainTreeProof: mapProof(proof.mainTreeProof),
-    predicate: { threshold: definition.threshold, comparison: definition.comparison },
+    predicate: { threshold: params.threshold, comparison: anchorComparison(params) },
     statA: {
       statToProve: proof.statToProve,
       eventStatRoot: proof.eventStatRoot,
       statProof: mapProof(proof.statProof),
     },
     statB:
-      definition.hasStatB && proof.statToProve2 && proof.statProof2
+      params.hasStatB && proof.statToProve2 && proof.statProof2
         ? {
             statToProve: proof.statToProve2,
             eventStatRoot: proof.eventStatRoot,
             statProof: mapProof(proof.statProof2),
           }
         : null,
-    op: definition.hasStatB ? definition.op : null,
+    op: anchorOp(params),
   };
 }
 

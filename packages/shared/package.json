@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./config": "./src/config.ts",
+    "./marketCatalog": "./src/marketCatalog.ts",
     "./idl/txoracle": "./src/idl/txoracle-devnet.json",
     "./idl/truebook.json": "./src/idl/truebook.json",
     "./idl/truebook-type": "./src/idl/truebook.ts"
