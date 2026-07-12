@@ -37,6 +37,12 @@ export function formatMarginBps(marginBps: number): string {
   return `${(marginBps / 100).toFixed(1)}%`;
 }
 
+/** "France vs Spain", or the home label alone when the away side is unknown
+ * (a chain fixture missing from the names table must not render "X vs "). */
+export function formatMatchupLabel(homeTeam: string, awayTeam: string): string {
+  return awayTeam ? `${homeTeam} vs ${awayTeam}` : homeTeam;
+}
+
 /** "4d2c70b8...101033" style middle truncation for hashes and signatures */
 export function truncateMiddle(
   value: string,

@@ -25,7 +25,6 @@ import {
   getReplayMatch,
   oddsAtMinute,
   scoreAtMinute,
-  type ReplayMatch,
 } from "@/lib/data/demoReplay";
 
 export type ReplayScreenView = "replay" | "loading" | "empty" | "error";

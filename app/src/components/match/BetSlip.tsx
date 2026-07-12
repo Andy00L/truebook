@@ -6,9 +6,16 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { OdometerNumber } from "@/components/ui/OdometerNumber";
 import { PriceEquation } from "@/components/ui/PriceEquation";
 import { CopyButton } from "@/components/ui/CopyButton";
-import { CircleIconButton, IconClose } from "@/components/ui/Icon";
+import {
+  CircleIconButton,
+  CircleIconLink,
+  IconClose,
+  IconLink,
+} from "@/components/ui/Icon";
 import { truncateMiddle, formatAmount, formatClock, formatOdds } from "@/lib/format";
 import { DEMO_BET_TX, DEMO_QUOTE_ID } from "@/lib/data/demoFixtures";
+import { explorerTxUrl } from "@/lib/data/types";
+import type { ChainStage } from "@/lib/chain/placeBet";
 
 export type SlipQuote = {
   outcomeKey: string;
@@ -36,7 +43,10 @@ type BetSlipProps = {
   /** Token label for the active source: "USDT" on chain, "USDC" in demo. */
   currencyLabel: string;
   /** Real on-chain placement; when absent the slip runs the demo flow. */
-  onPlaceBet?: (stakeAmount: number) => Promise<PlaceBetResult>;
+  onPlaceBet?: (
+    stakeAmount: number,
+    onStage: (stage: ChainStage) => void,
+  ) => Promise<PlaceBetResult>;
 };
 
 /**
@@ -65,6 +75,7 @@ export function BetSlip({
     QUOTE_VALIDITY_SECONDS,
   );
   const [placement, setPlacement] = useState<PlacementStatus | null>(null);
+  const [chainStage, setChainStage] = useState<ChainStage | null>(null);
   const [betSignature, setBetSignature] = useState<string | null>(null);
   const [placeError, setPlaceError] = useState<string | null>(null);
   const confirmTimerRef = useRef<number | null>(null);
@@ -128,7 +139,8 @@ export function BetSlip({
       }, DEMO_CONFIRM_MS);
       return;
     }
-    const placeResult = await onPlaceBet(stakeAmount);
+    const placeResult = await onPlaceBet(stakeAmount, setChainStage);
+    setChainStage(null);
     if (placeResult.ok) {
       setBetSignature(placeResult.signature);
       setPlacement("confirmed");
@@ -138,7 +150,9 @@ export function BetSlip({
     }
   };
 
-  const receiptTx = betSignature ?? DEMO_BET_TX;
+  // The demo hash never stands in for a live transaction: on chain the row
+  // shows a pending placeholder until the real signature lands.
+  const receiptTx = betSignature ?? (onPlaceBet ? null : DEMO_BET_TX);
 
   return (
     <>
@@ -323,18 +337,32 @@ export function BetSlip({
                 style={{ animationDelay: "160ms" }}
               >
                 <span className="text-sm text-ink-muted">Bet tx</span>
-                <span className="flex items-center gap-2.5">
-                  <span
-                    title={receiptTx}
-                    className="font-mono text-xs tabular-nums text-ink"
-                  >
-                    {truncateMiddle(receiptTx)}
+                {receiptTx === null ? (
+                  <span className="font-mono text-xs text-ink-faint">
+                    pending…
                   </span>
-                  <CopyButton
-                    value={receiptTx}
-                    ariaLabel="Copy the bet transaction signature"
-                  />
-                </span>
+                ) : (
+                  <span className="flex items-center gap-2.5">
+                    <span
+                      title={receiptTx}
+                      className="font-mono text-xs tabular-nums text-ink"
+                    >
+                      {truncateMiddle(receiptTx)}
+                    </span>
+                    <CopyButton
+                      value={receiptTx}
+                      ariaLabel="Copy the bet transaction signature"
+                    />
+                    {betSignature ? (
+                      <CircleIconLink
+                        href={explorerTxUrl(betSignature)}
+                        ariaLabel="Open the bet transaction in Solana Explorer"
+                      >
+                        <IconLink />
+                      </CircleIconLink>
+                    ) : null}
+                  </span>
+                )}
               </div>
               <div className="mt-5 flex min-h-8 justify-center">
                 {placement === "pending" ? (
@@ -345,7 +373,13 @@ export function BetSlip({
                     >
                       <span className="absolute left-1/2 top-0 -ml-[3px] size-1.5 rounded-full bg-current" />
                     </span>
-                    Confirming on Solana
+                    {onPlaceBet
+                      ? chainStage === "signing"
+                        ? "Approve the transaction in your wallet"
+                        : chainStage === "confirming"
+                          ? "Confirming on Solana"
+                          : "Preparing the transaction"
+                      : "Confirming on Solana"}
                   </span>
                 ) : (
                   <StatusPill variant="accent" animateIn animateInDelayMs={620}>

@@ -10,7 +10,10 @@ import { OdometerNumber } from "@/components/ui/OdometerNumber";
 import { CircleIconButton, IconClose } from "@/components/ui/Icon";
 import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { truncateMiddle } from "@/lib/format";
-import { requestFaucetUsdtForWallet } from "@/lib/chain/placeBet";
+import {
+  requestFaucetUsdtForWallet,
+  type ChainStage,
+} from "@/lib/chain/placeBet";
 import { currencyLabelForSource } from "@/lib/data/types";
 import {
   fetchWalletFunds,
@@ -45,7 +48,7 @@ function shortReason(reason: string): string {
   if (cleaned.includes("429") || cleaned.toLowerCase().includes("rate")) {
     return "Devnet airdrop rate-limited. Try faucet.solana.com instead.";
   }
-  return cleaned.length > 90 ? `${cleaned.slice(0, 90)}…` : cleaned;
+  return cleaned.length > 160 ? `${cleaned.slice(0, 160)}…` : cleaned;
 }
 
 function formatBalance(value: number, fractionDigits: number): string {
@@ -91,6 +94,7 @@ export function JudgePanel({
     funds: WalletFunds;
   } | null>(null);
   const [requestKind, setRequestKind] = useState<RequestKind | null>(null);
+  const [chainStage, setChainStage] = useState<ChainStage | null>(null);
   const [fundedRow, setFundedRow] = useState<FundedRow | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const requestTimerRef = useRef<number | null>(null);
@@ -202,7 +206,15 @@ export function JudgePanel({
   };
 
   const requestChainUsdt = async () => {
-    if (requestKind !== null || !anchorWallet) {
+    if (requestKind !== null) {
+      return;
+    }
+    if (!anchorWallet) {
+      // Connected but unable to sign (a standard wallet without the
+      // signTransaction feature): say so instead of a dead button.
+      setErrorMessage(
+        "The connected wallet cannot sign transactions here. Connect Phantom or Solflare instead.",
+      );
       return;
     }
     retryActionRef.current = () => {
@@ -212,7 +224,8 @@ export function JudgePanel({
     setErrorMessage(null);
     setFundedRow(null);
     const usdtBefore = chainFunds ? chainFunds.usdt : 0;
-    const result = await requestFaucetUsdtForWallet(anchorWallet);
+    const result = await requestFaucetUsdtForWallet(anchorWallet, setChainStage);
+    setChainStage(null);
     if (result.ok) {
       const funds = await refreshChainFunds(anchorWallet.publicKey);
       const granted = funds === null ? 0 : funds.usdt - usdtBefore;
@@ -381,7 +394,11 @@ export function JudgePanel({
           {requestKind === "usdt" ? (
             <>
               <SpinnerDot />
-              Requesting...
+              {chainStage === "signing"
+                ? "Approve in wallet..."
+                : chainStage === "confirming"
+                  ? "Confirming..."
+                  : "Requesting..."}
             </>
           ) : (
             `Request test ${tokenLabel}`

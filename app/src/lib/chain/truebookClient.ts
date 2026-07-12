@@ -5,15 +5,15 @@
  */
 
 import { Program } from "@coral-xyz/anchor";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 // Deep imports on purpose: the shared barrel pulls the TxLINE client whose
 // .js-suffixed relative imports Turbopack does not resolve from TS sources.
-import { DEVNET_RPC_URL } from "@truebook/shared/config";
 import TRUEBOOK_IDL from "@truebook/shared/idl/truebook.json";
 import type { Truebook } from "@truebook/shared/idl/truebook-type";
 import type { MatchView } from "@/lib/data/types";
 import { formatMarginBps } from "@/lib/format";
 import { getFixtureNames } from "@/lib/chain/fixtureNames";
+import { createDevnetConnection } from "@/lib/chain/connection";
 
 export type ChainHouseStats = {
   vaultLabel: string;
@@ -37,7 +37,7 @@ const ODDS_BPS_FACTOR = 10_000;
 const BPS_FACTOR = 10_000;
 
 function buildReadOnlyProgram(): Program<Truebook> {
-  const connection = new Connection(DEVNET_RPC_URL, "confirmed");
+  const connection = createDevnetConnection();
   return new Program<Truebook>(TRUEBOOK_IDL as Truebook, { connection });
 }
 

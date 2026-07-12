@@ -2,7 +2,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { OddsCell } from "@/components/ui/OddsCell";
 import { formatOdds } from "@/lib/format";
-import type { MarketView } from "@/lib/data/types";
+import { AWAITING_QUOTE_NOTE, type MarketView } from "@/lib/data/types";
 
 type MarketCardProps = {
   market: MarketView;
@@ -39,6 +39,11 @@ export function MarketCard({
         <div className="mt-4 flex min-h-13 items-center gap-3">
           <StatusPill variant="amber">Locked</StatusPill>
           <span className="text-sm text-ink-muted">{market.phaseNote}</span>
+        </div>
+      ) : market.outcomes.length === 0 ? (
+        <div className="mt-4 flex min-h-13 items-center gap-3">
+          <StatusPill variant="neutral">Awaiting quote</StatusPill>
+          <span className="text-sm text-ink-muted">{AWAITING_QUOTE_NOTE}</span>
         </div>
       ) : (
         <div className="mt-3.5 flex gap-3 overflow-x-auto">

@@ -84,6 +84,9 @@ export function explorerTxUrl(signature: string): string {
   return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
 }
 
+/** Shown wherever an open market has no posted quote yet (lobby and match). */
+export const AWAITING_QUOTE_NOTE = "The next keeper tick posts a fresh price.";
+
 /**
  * The token label the UI shows per data source. The live devnet book is
  * denominated in the TxLINE test USDT mint (ELWTK...G2Ujh); the demo fixtures

@@ -1,7 +1,7 @@
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { OdometerNumber } from "@/components/ui/OdometerNumber";
-import { formatClock } from "@/lib/format";
+import { formatClock, formatMatchupLabel } from "@/lib/format";
 import type { MatchView } from "@/lib/data/types";
 
 /**
@@ -21,7 +21,7 @@ export function ScoreHeaderCard({ match }: { match: MatchView }) {
       <div>
         <div className="text-sm text-ink-muted">{match.competitionLine}</div>
         <div className="mt-2.5 text-xl font-medium tracking-tight text-ink">
-          {match.homeTeam} vs {match.awayTeam}
+          {formatMatchupLabel(match.homeTeam, match.awayTeam)}
         </div>
         <div className="mt-1.5 text-sm text-ink-muted">{match.periodNote}</div>
       </div>

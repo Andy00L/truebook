@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAnchorWallet } from "@solana/wallet-adapter-react";
+import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
 import { PageShell } from "@/components/ui/PageShell";
 import { TopBar } from "@/components/ui/TopBar";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -19,7 +19,7 @@ import {
 } from "@/components/match/BetSlip";
 import { useDemoMatch, type MatchScreenView } from "@/lib/data/useDemoMatch";
 import { useChainMatch } from "@/lib/chain/useChainMatch";
-import { placeBetOnChain } from "@/lib/chain/placeBet";
+import { placeBetOnChain, type ChainStage } from "@/lib/chain/placeBet";
 import { currencyLabelForSource, type MatchView } from "@/lib/data/types";
 
 export type MatchDataSource = "demo" | "chain";
@@ -41,6 +41,7 @@ export function MatchScreen({
   const demoMatch = useDemoMatch(fixtureId, initialView);
   const chainMatch = useChainMatch(isChainSource, fixtureId);
   const anchorWallet = useAnchorWallet();
+  const { publicKey } = useWallet();
   const [slipQuote, setSlipQuote] = useState<SlipQuote | null>(null);
 
   const view: MatchScreenView = isChainSource
@@ -136,11 +137,14 @@ export function MatchScreen({
 
   const handleChainPlaceBet = async (
     stakeAmount: number,
+    onStage: (stage: ChainStage) => void,
   ): Promise<PlaceBetResult> => {
     if (!anchorWallet) {
       return {
         ok: false,
-        reason: "Connect a wallet first (top right), then place the bet.",
+        reason: publicKey
+          ? "The connected wallet cannot sign transactions here. Connect Phantom or Solflare instead."
+          : "Connect a wallet first (top right), then place the bet.",
       };
     }
     if (!slipQuote?.marketAddress || !slipQuote.side) {
@@ -151,6 +155,7 @@ export function MatchScreen({
       slipQuote.marketAddress,
       slipQuote.side,
       stakeAmount,
+      onStage,
     );
   };
 

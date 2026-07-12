@@ -3,8 +3,8 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { OdometerNumber } from "@/components/ui/OdometerNumber";
 import { PriceEquation } from "@/components/ui/PriceEquation";
 import { IconChevron } from "@/components/ui/Icon";
-import { formatOdds } from "@/lib/format";
-import type { MatchView } from "@/lib/data/types";
+import { formatMatchupLabel, formatOdds } from "@/lib/format";
+import { AWAITING_QUOTE_NOTE, type MatchView } from "@/lib/data/types";
 
 type FixtureCardProps = {
   fixture: MatchView;
@@ -39,7 +39,7 @@ export function FixtureCard({ fixture, enterDelayMs }: FixtureCardProps) {
       <span className="flex items-start justify-between gap-4">
         <span className="min-w-0">
           <span className="block text-lg font-medium tracking-tight">
-            {fixture.homeTeam} vs {fixture.awayTeam}
+            {formatMatchupLabel(fixture.homeTeam, fixture.awayTeam)}
           </span>
           <span className="mt-1.5 flex flex-wrap items-center gap-2.5">
             <span className="text-sm text-ink-muted">
@@ -68,9 +68,7 @@ export function FixtureCard({ fixture, enterDelayMs }: FixtureCardProps) {
             servedLabel={formatOdds(featuredOutcome.servedOdds)}
           />
         ) : (
-          <span className="text-xs text-ink-faint">
-            The next keeper tick posts a fresh price.
-          </span>
+          <span className="text-xs text-ink-faint">{AWAITING_QUOTE_NOTE}</span>
         )}
         <span
           aria-hidden="true"

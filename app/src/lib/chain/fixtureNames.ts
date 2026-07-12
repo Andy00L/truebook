@@ -79,6 +79,17 @@ const FIXTURE_NAMES: Record<string, FixtureNameEntry> = {
     awayTeam: "Switzerland",
     competitionLine: "TxLINE devnet · international friendly",
   },
+  // Markets 13 and 14, created by the tick of 2026-07-12 (TxLINE snapshot).
+  "18237038": {
+    homeTeam: "France",
+    awayTeam: "Spain",
+    competitionLine: "TxLINE devnet · international friendly",
+  },
+  "18241006": {
+    homeTeam: "England",
+    awayTeam: "Argentina",
+    competitionLine: "TxLINE devnet · international friendly",
+  },
 };
 
 export function getFixtureNames(fixtureId: string): FixtureNameEntry {

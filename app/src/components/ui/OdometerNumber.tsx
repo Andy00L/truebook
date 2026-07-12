@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 import { joinClassNames } from "@/lib/joinClassNames";
 
 /**
@@ -40,20 +40,24 @@ export function OdometerNumber({
   mountDelayMs = 0,
   className,
 }: OdometerNumberProps) {
-  // Previous value and a roll version, tracked across renders so only the
-  // digits that changed remount with the roll animation (no effect needed).
-  const lastValueRef = useRef<string | null>(null);
-  const previousValueRef = useRef<string>(
-    rollOnMount ? maskDigits(value) : value,
-  );
-  const rollVersionRef = useRef(0);
-  if (lastValueRef.current !== null && lastValueRef.current !== value) {
-    previousValueRef.current = lastValueRef.current;
-    rollVersionRef.current += 1;
+  // Previous value and a roll version, tracked so only the digits that
+  // changed remount with the roll animation. The React adjust-state-during-
+  // render pattern: when the value prop moves, snapshot the old one and
+  // re-render; no effect, no ref reads during render.
+  const [rollSnapshot, setRollSnapshot] = useState(() => ({
+    lastValue: value,
+    previousValue: rollOnMount ? maskDigits(value) : value,
+    rollVersion: 0,
+  }));
+  if (rollSnapshot.lastValue !== value) {
+    setRollSnapshot({
+      lastValue: value,
+      previousValue: rollSnapshot.lastValue,
+      rollVersion: rollSnapshot.rollVersion + 1,
+    });
   }
-  lastValueRef.current = value;
 
-  let previousValue = previousValueRef.current;
+  let previousValue = rollSnapshot.previousValue;
   if (previousValue.length !== value.length) {
     previousValue = maskDigits(value);
   }
@@ -88,7 +92,11 @@ export function OdometerNumber({
       >
         <span className="invisible inline-block">{character}</span>
         <span
-          key={hasChanged ? `${character}-${rollVersionRef.current}` : character}
+          key={
+            hasChanged
+              ? `${character}-${rollSnapshot.rollVersion}`
+              : character
+          }
           className={joinClassNames(
             "absolute inset-x-0 top-0 text-center",
             hasChanged &&
