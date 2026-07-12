@@ -15,8 +15,19 @@ export const WALLET_SIGNATURE_TIMEOUT_MS = 90_000;
 /** Devnet confirms in seconds; after 60s the transaction outcome is unknown. */
 export const CONFIRM_TIMEOUT_MS = 60_000;
 
+/**
+ * The dedicated RPC endpoint (Helius) comes from the environment so no key
+ * ever lands in the repo; the public devnet endpoint stays as the fallback.
+ * The literal process.env member access is required: Next inlines it into
+ * the client bundle at build time. Set it in app/.env.local and in the
+ * Vercel project env.
+ */
+export function resolveDevnetRpcUrl(): string {
+  return process.env.NEXT_PUBLIC_DEVNET_RPC_URL ?? DEVNET_RPC_URL;
+}
+
 export function createDevnetConnection(): Connection {
-  return new Connection(DEVNET_RPC_URL, {
+  return new Connection(resolveDevnetRpcUrl(), {
     commitment: "confirmed",
     // Fail fast on 429 so the caller can show a distinct rate-limit error
     // instead of web3.js retrying in the background with no feedback.

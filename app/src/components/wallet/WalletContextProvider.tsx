@@ -2,7 +2,7 @@
 
 import { useMemo, type ReactNode } from "react";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
-import { DEVNET_RPC_URL } from "@truebook/shared/config";
+import { resolveDevnetRpcUrl } from "@/lib/chain/connection";
 
 /**
  * App-wide Solana wallet context. The adapters array stays empty on purpose:
@@ -10,7 +10,7 @@ import { DEVNET_RPC_URL } from "@truebook/shared/config";
  * the wallet-standard and are discovered automatically.
  */
 export function WalletContextProvider({ children }: { children: ReactNode }) {
-  const endpoint = useMemo(() => DEVNET_RPC_URL, []);
+  const endpoint = useMemo(() => resolveDevnetRpcUrl(), []);
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={[]} autoConnect>
