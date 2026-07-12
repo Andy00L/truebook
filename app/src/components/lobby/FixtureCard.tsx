@@ -18,13 +18,18 @@ type FixtureCardProps = {
  * right, the transparency equation as the footer.
  */
 export function FixtureCard({ fixture, enterDelayMs }: FixtureCardProps) {
-  const featuredMarket = fixture.markets[0];
+  const featuredMarket =
+    fixture.markets.find((market) => market.outcomes.length > 0) ??
+    fixture.markets[0];
   const featuredOutcome =
     featuredMarket?.outcomes.find((outcome) => outcome.isBest) ??
     featuredMarket?.outcomes[0];
   const isLive = fixture.phase === "live";
+  // A single-market fixture names its group; a full board sells its depth.
   const marketLine = featuredMarket
-    ? `${featuredMarket.name} · ${featuredMarket.groupLabel}`
+    ? fixture.markets.length > 1
+      ? `${featuredMarket.name} · ${fixture.markets.length} markets`
+      : `${featuredMarket.name} · ${featuredMarket.groupLabel}`
     : "Awaiting quote";
   const scoreSuffix = isLive
     ? ` · ${fixture.homeScore}-${fixture.awayScore}`

@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { HashRow } from "@/components/ui/HashRow";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { IconChevron } from "@/components/ui/Icon";
 import { joinClassNames } from "@/lib/joinClassNames";
-import { explorerTxUrl } from "@/lib/data/types";
-import type { TicketView } from "@/lib/data/demoTickets";
+import { formatAmount } from "@/lib/format";
+import { explorerTxUrl, type TicketView } from "@/lib/data/types";
 
 type TicketRowProps = {
   ticket: TicketView;
@@ -16,6 +17,8 @@ type TicketRowProps = {
   onToggle: () => void;
   /** 40ms stagger step per row position in the list. */
   enterDelayMs: number;
+  /** Chain source: opens the cash-out sheet for this ticket's offer. */
+  onCashOut?: (ticket: TicketView) => void;
 };
 
 function TicketStatusPill({ status }: { status: TicketView["status"] }) {
@@ -29,8 +32,14 @@ function TicketStatusPill({ status }: { status: TicketView["status"] }) {
   if (status === "won") {
     return <StatusPill variant="accent">Verified on Solana</StatusPill>;
   }
+  if (status === "refundable") {
+    return <StatusPill variant="danger">Refund due</StatusPill>;
+  }
   if (status === "refunded") {
     return <StatusPill variant="danger">Proven overcharge</StatusPill>;
+  }
+  if (status === "cashedOut") {
+    return <StatusPill variant="neutral">Cashed out</StatusPill>;
   }
   return <StatusPill variant="neutral">Settled</StatusPill>;
 }
@@ -46,6 +55,7 @@ export function TicketRow({
   isOpen,
   onToggle,
   enterDelayMs,
+  onCashOut,
 }: TicketRowProps) {
   // Remount the receipt content per expansion so its cascade replays.
   const [expandSequence, setExpandSequence] = useState(0);
@@ -142,6 +152,23 @@ export function TicketRow({
             >
               {ticket.priceLine}
             </div>
+
+            {ticket.cashOut && onCashOut ? (
+              <div
+                className="mt-1 flex animate-card-in flex-wrap items-center justify-between gap-3 rounded-sm bg-field px-4 py-3"
+                style={{ animationDelay: enterDelayFor(rowCount + 2) }}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-ink">
+                    Cash out now: {formatAmount(ticket.cashOut.offerAmount)} USDT
+                  </span>
+                  <span className="mt-0.5 block text-xs text-ink-muted">
+                    Priced from the live on-chain quote, auditable like any price.
+                  </span>
+                </span>
+                <Button onClick={() => onCashOut(ticket)}>Cash out</Button>
+              </div>
+            ) : null}
 
             <div
               className="animate-card-in pt-3 text-sm text-ink-muted"

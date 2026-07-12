@@ -2,21 +2,30 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
 import { PageShell } from "@/components/ui/PageShell";
 import { TopBar } from "@/components/ui/TopBar";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorPanel } from "@/components/ui/ErrorPanel";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { TicketRow } from "@/components/tickets/TicketRow";
 import { TicketsSkeleton } from "@/components/tickets/TicketsSkeleton";
+import { CashOutSheet } from "@/components/tickets/CashOutSheet";
 import {
   DEMO_TICKETS,
   filterTickets,
   type TicketFilter,
 } from "@/lib/data/demoTickets";
+import { useChainTickets } from "@/lib/chain/useChainTickets";
+import { cashOutTicketOnChain } from "@/lib/chain/cashOut";
+import type { CashOutOffer, TicketView } from "@/lib/data/types";
+import type { ChainActionResult, ChainStage } from "@/lib/chain/placeBet";
 
 export type TicketsScreenView = "tickets" | "loading" | "empty" | "error";
+
+export type TicketsDataSource = "demo" | "chain";
 
 const FILTER_LABELS: ReadonlyArray<{ key: TicketFilter; label: string }> = [
   { key: "all", label: "All" },
@@ -26,35 +35,100 @@ const FILTER_LABELS: ReadonlyArray<{ key: TicketFilter; label: string }> = [
   { key: "refundable", label: "Refunded" },
 ];
 
+const CASHED_OUT_FILTER = { key: "cashedOut", label: "Cashed out" } as const;
+
 type TicketsScreenProps = {
   initialView: TicketsScreenView;
+  /** Demo book, or the connected wallet's devnet tickets. */
+  dataSource: TicketsDataSource;
 };
 
 /** The bettor's tickets: accordion rows opening into on-chain receipts. */
-export function TicketsScreen({ initialView }: TicketsScreenProps) {
+export function TicketsScreen({ initialView, dataSource }: TicketsScreenProps) {
+  const isChainSource = dataSource === "chain";
   const [view, setView] = useState<TicketsScreenView>(initialView);
   const [activeFilter, setActiveFilter] = useState<TicketFilter>("all");
   const [openTicketId, setOpenTicketId] = useState<string | null>(
-    "ticket-homewin-won",
+    isChainSource ? null : "ticket-homewin-won",
   );
+  const [cashOutTicket, setCashOutTicket] = useState<TicketView | null>(null);
 
-  const visibleTickets = filterTickets(DEMO_TICKETS, activeFilter);
-  const liveCount = filterTickets(DEMO_TICKETS, "live").length;
+  const { publicKey } = useWallet();
+  const anchorWallet = useAnchorWallet();
+  const ownerBase58 = publicKey ? publicKey.toBase58() : null;
+  const chainTickets = useChainTickets(isChainSource, ownerBase58);
+
+  const tickets: ReadonlyArray<TicketView> = isChainSource
+    ? chainTickets.state.status === "ready"
+      ? chainTickets.state.tickets
+      : []
+    : DEMO_TICKETS;
+
+  const filterOptions = isChainSource
+    ? [...FILTER_LABELS, CASHED_OUT_FILTER]
+    : FILTER_LABELS;
+  const visibleTickets = filterTickets(tickets, activeFilter);
+  const liveCount = filterTickets(tickets, "live").length;
+
+  const handleChainCashOut = async (
+    offer: CashOutOffer,
+    onStage: (stage: ChainStage) => void,
+  ): Promise<ChainActionResult> => {
+    if (!anchorWallet) {
+      return {
+        ok: false,
+        reason:
+          "The connected wallet cannot sign transactions here. Connect Phantom or Solflare instead.",
+      };
+    }
+    return cashOutTicketOnChain(
+      anchorWallet,
+      offer.ticketAddress,
+      offer.marketAddress,
+      onStage,
+    );
+  };
+
+  const isChainWalletMissing = isChainSource && ownerBase58 === null;
+  const isChainLoading =
+    isChainSource && !isChainWalletMissing && chainTickets.state.status === "loading";
+  const isChainError =
+    isChainSource && !isChainWalletMissing && chainTickets.state.status === "error";
+  const isChainEmpty =
+    isChainSource &&
+    !isChainWalletMissing &&
+    chainTickets.state.status === "ready" &&
+    tickets.length === 0;
 
   return (
     <PageShell>
-      <TopBar active="tickets" />
+      <TopBar active="tickets" withWallet={isChainSource} />
 
       <div className="flex items-baseline justify-between gap-4 border-b border-border px-1 pb-3.5">
         <span className="text-sm text-ink-muted">Your tickets</span>
         <span className="font-mono text-xs tabular-nums text-ink-muted">
-          {DEMO_TICKETS.length} tickets · {liveCount} live
+          {tickets.length} tickets · {liveCount} live
         </span>
       </div>
 
-      {view === "loading" ? (
+      {isChainWalletMissing ? (
+        <div className="mt-5">
+          <EmptyState
+            message="Tickets live on chain, keyed to your wallet. Connect it to see them."
+            action={<ConnectWalletButton />}
+          />
+        </div>
+      ) : isChainLoading || (!isChainSource && view === "loading") ? (
         <TicketsSkeleton />
-      ) : view === "error" ? (
+      ) : isChainError ? (
+        <div className="mt-5">
+          <ErrorPanel
+            title="Your tickets didn't load"
+            message="The devnet RPC did not respond. Nothing is lost; tickets live on chain."
+            onRetry={chainTickets.refresh}
+          />
+        </div>
+      ) : !isChainSource && view === "error" ? (
         <div className="mt-5">
           <ErrorPanel
             title="Your tickets didn't load"
@@ -62,7 +136,7 @@ export function TicketsScreen({ initialView }: TicketsScreenProps) {
             onRetry={() => setView("tickets")}
           />
         </div>
-      ) : view === "empty" ? (
+      ) : isChainEmpty || (!isChainSource && view === "empty") ? (
         <div className="mt-5">
           <EmptyState
             message="No tickets yet. Take a price on an open market and it will settle here."
@@ -85,11 +159,11 @@ export function TicketsScreen({ initialView }: TicketsScreenProps) {
               onSelect={(filterKey) =>
                 setActiveFilter(filterKey as TicketFilter)
               }
-              options={FILTER_LABELS.map((filterOption) => ({
+              options={filterOptions.map((filterOption) => ({
                 key: filterOption.key,
                 label: filterOption.label,
                 detail: String(
-                  filterTickets(DEMO_TICKETS, filterOption.key).length,
+                  filterTickets(tickets, filterOption.key).length,
                 ),
               }))}
             />
@@ -98,7 +172,7 @@ export function TicketsScreen({ initialView }: TicketsScreenProps) {
           {visibleTickets.length === 0 ? (
             <div className="mt-4">
               <EmptyState
-                message={`No ${activeFilter === "refundable" ? "refunded" : activeFilter} tickets right now.`}
+                message={`No ${activeFilter === "refundable" ? "refunded" : activeFilter === "cashedOut" ? "cashed out" : activeFilter} tickets right now.`}
                 action={
                   <button
                     type="button"
@@ -125,12 +199,25 @@ export function TicketsScreen({ initialView }: TicketsScreenProps) {
                     )
                   }
                   enterDelayMs={ticketIndex * 40}
+                  onCashOut={
+                    isChainSource ? (picked) => setCashOutTicket(picked) : undefined
+                  }
                 />
               ))}
             </SurfaceCard>
           )}
         </>
       )}
+
+      {cashOutTicket?.cashOut ? (
+        <CashOutSheet
+          ticket={cashOutTicket}
+          offer={cashOutTicket.cashOut}
+          onClose={() => setCashOutTicket(null)}
+          onCashOut={handleChainCashOut}
+          onCompleted={chainTickets.refresh}
+        />
+      ) : null}
     </PageShell>
   );
 }

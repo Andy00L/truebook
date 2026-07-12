@@ -58,7 +58,7 @@ const DEVNET_HINT =
   "TrueBook runs on Solana devnet; mainnet balances do not count here.";
 
 /** Maps raw wallet/RPC failures onto distinct, actionable messages. */
-function describeChainError(chainError: unknown): string {
+export function describeChainError(chainError: unknown): string {
   const text =
     chainError instanceof Error ? chainError.message : String(chainError);
   const lowered = text.toLowerCase();
@@ -82,7 +82,7 @@ function describeChainError(chainError: unknown): string {
   return text;
 }
 
-function buildReadOnlyTruebookProgram(connection: Connection): Program<Truebook> {
+export function buildReadOnlyTruebookProgram(connection: Connection): Program<Truebook> {
   return new Program<Truebook>(TRUEBOOK_IDL as Truebook, { connection });
 }
 
@@ -121,7 +121,7 @@ export async function readUsdtBalanceUi(
 // session so repeat bets skip the account read entirely.
 let cachedHouseVault: PublicKey | null = null;
 
-async function fetchHouseVault(program: Program<Truebook>): Promise<PublicKey> {
+export async function fetchHouseVault(program: Program<Truebook>): Promise<PublicKey> {
   if (cachedHouseVault !== null) {
     return cachedHouseVault;
   }
@@ -144,7 +144,7 @@ async function fetchHouseVault(program: Program<Truebook>): Promise<PublicKey> {
  * prompt opens without one more sequential round-trip. Each step has its own
  * deadline and failure message so a stall names the stage.
  */
-async function signSendAndConfirm(
+export async function signSendAndConfirm(
   connection: Connection,
   wallet: AnchorWallet,
   transaction: Transaction,
@@ -181,7 +181,7 @@ async function signSendAndConfirm(
   return { ok: true, signature };
 }
 
-function fetchLatestBlockhash(
+export function fetchLatestBlockhash(
   connection: Connection,
 ): Promise<BlockhashWithExpiryBlockHeight> {
   return withDeadline(

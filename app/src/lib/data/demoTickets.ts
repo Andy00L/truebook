@@ -1,50 +1,11 @@
 /**
  * Demo ticket book: one ticket per state (live, won, lost, refunded after a
  * proven overcharge), with the realistic figures validated in the design
- * session. The chain provider will list real Ticket accounts by bettor.
+ * session. The chain provider (lib/chain/tickets.ts) lists real Ticket
+ * accounts by bettor onto the same TicketView shape (lib/data/types.ts).
  */
 
-export type TicketStatus = "live" | "won" | "lost" | "refunded";
-
-export type TicketProof =
-  | {
-      kind: "priceOnly";
-      quoteId: string;
-      auditHref: string;
-      note: string;
-    }
-  | {
-      kind: "settled";
-      dayRoot: string;
-      merklePath?: string;
-      verifyTx: string;
-      stamp: "verified" | "overcharge";
-      receiptLink: string;
-      verifyPageHref?: string;
-    };
-
-export type TicketView = {
-  ticketId: string;
-  marketName: string;
-  pickLabel: string;
-  fixtureLine: string;
-  status: TicketStatus;
-  stakeLabel: string;
-  oddsLabel: string;
-  /** Third summary column: potential, payout, or refunded amount. */
-  amountColumnTitle: "potential" | "payout" | "refunded";
-  amountLabel: string;
-  /** Expanded left panel. */
-  receiptTitle: "Open ticket" | "Proof receipt";
-  outcomeLine?: string;
-  receiptRows: ReadonlyArray<{
-    label: string;
-    value: string;
-    tone?: "danger";
-  }>;
-  priceLine: string;
-  proof: TicketProof;
-};
+import type { TicketStatus, TicketView } from "@/lib/data/types";
 
 export const DEMO_TICKETS: ReadonlyArray<TicketView> = [
   {
@@ -166,8 +127,22 @@ export const DEMO_TICKETS: ReadonlyArray<TicketView> = [
   },
 ];
 
-/** Filter chips include "refundable" per the design; it maps to refunded. */
-export type TicketFilter = "all" | "live" | "won" | "lost" | "refundable";
+/** Filter chips; "refundable" groups proven overcharges with paid refunds. */
+export type TicketFilter =
+  | "all"
+  | "live"
+  | "won"
+  | "lost"
+  | "refundable"
+  | "cashedOut";
+
+const STATUSES_FOR_FILTER: Record<Exclude<TicketFilter, "all">, TicketStatus[]> = {
+  live: ["live"],
+  won: ["won"],
+  lost: ["lost"],
+  refundable: ["refundable", "refunded"],
+  cashedOut: ["cashedOut"],
+};
 
 export function filterTickets(
   tickets: ReadonlyArray<TicketView>,
@@ -176,7 +151,6 @@ export function filterTickets(
   if (filter === "all") {
     return tickets;
   }
-  const statusForFilter: TicketStatus =
-    filter === "refundable" ? "refunded" : filter;
-  return tickets.filter((ticket) => ticket.status === statusForFilter);
+  const statuses = STATUSES_FOR_FILTER[filter];
+  return tickets.filter((ticket) => statuses.includes(ticket.status));
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import {
   TicketsScreen,
+  type TicketsDataSource,
   type TicketsScreenView,
 } from "@/components/tickets/TicketsScreen";
 
@@ -31,5 +32,10 @@ function parseInitialView(
 
 export default async function TicketsPage({ searchParams }: TicketsPageProps) {
   const { view } = await searchParams;
-  return <TicketsScreen initialView={parseInitialView(view)} />;
+  // Flip to the connected wallet's tickets with NEXT_PUBLIC_DATA_SOURCE=chain.
+  const dataSource: TicketsDataSource =
+    process.env.NEXT_PUBLIC_DATA_SOURCE === "chain" ? "chain" : "demo";
+  return (
+    <TicketsScreen initialView={parseInitialView(view)} dataSource={dataSource} />
+  );
 }

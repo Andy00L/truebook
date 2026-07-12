@@ -277,7 +277,7 @@ export function BetSlip({
                 href="/tickets"
                 className="focus-ring rounded-full px-2 py-1 text-sm font-medium text-accent no-underline hover:underline"
               >
-                Audit this price
+                Audit this price · auditors earn 5%
               </a>
             </div>
           </>

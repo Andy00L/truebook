@@ -34,6 +34,12 @@ export type MarketView = {
   phase: MarketPhase;
   /** One line shown for locked or awaiting-proof markets. */
   phaseNote?: string;
+  /**
+   * In-play micro-window: the market was opened mid-match and stops taking
+   * bets at closesAtMs. Cards show a live countdown instead of the kickoff.
+   */
+  isInPlay?: boolean;
+  closesAtMs?: number;
   outcomes: OutcomeQuote[];
 };
 
@@ -77,6 +83,77 @@ export type ProofRefs = {
   dayRoot: string;
   merklePath: string;
   verifyTx: string;
+};
+
+/**
+ * Ticket lifecycle as the screens read it. Chain adds two states the demo
+ * never shows: refundable (a proven overcharge awaiting its refund crank)
+ * and cashedOut (sold back to the vault at the live consensus price).
+ */
+export type TicketStatus =
+  | "live"
+  | "won"
+  | "lost"
+  | "refundable"
+  | "refunded"
+  | "cashedOut";
+
+export type TicketProof =
+  | {
+      kind: "priceOnly";
+      quoteId: string;
+      auditHref: string;
+      note: string;
+    }
+  | {
+      kind: "settled";
+      dayRoot: string;
+      merklePath?: string;
+      verifyTx: string;
+      stamp: "verified" | "overcharge";
+      receiptLink: string;
+      verifyPageHref?: string;
+    };
+
+/** The vault's standing offer to buy a live ticket back, priced on-chain. */
+export type CashOutOffer = {
+  ticketAddress: string;
+  marketAddress: string;
+  /** What the vault pays right now, in UI units. */
+  offerAmount: number;
+  /** The ticket's potential payout the offer derives from, in UI units. */
+  payoutAmount: number;
+  /** The opposite side's served odds backing the price, e.g. "3.00". */
+  oppositeOddsLabel: string;
+  /** The opposite side's implied probability, 0..100. */
+  oppositeImpliedPct: number;
+  /** Seconds of quote freshness left (mirror of the on-chain 120s rule). */
+  quoteSecondsLeft: number;
+};
+
+export type TicketView = {
+  ticketId: string;
+  marketName: string;
+  pickLabel: string;
+  fixtureLine: string;
+  status: TicketStatus;
+  stakeLabel: string;
+  oddsLabel: string;
+  /** Third summary column: potential, payout, or refunded amount. */
+  amountColumnTitle: "potential" | "payout" | "refunded" | "cashed out";
+  amountLabel: string;
+  /** Expanded left panel. */
+  receiptTitle: "Open ticket" | "Proof receipt";
+  outcomeLine?: string;
+  receiptRows: ReadonlyArray<{
+    label: string;
+    value: string;
+    tone?: "danger";
+  }>;
+  priceLine: string;
+  proof: TicketProof;
+  /** Chain source only: present while the vault's buy-back window is open. */
+  cashOut?: CashOutOffer;
 };
 
 /** Solana explorer link for a devnet transaction signature. */

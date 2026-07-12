@@ -1,6 +1,7 @@
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { OddsCell } from "@/components/ui/OddsCell";
+import { InPlayCountdown } from "@/components/match/InPlayCountdown";
 import { formatOdds } from "@/lib/format";
 import { AWAITING_QUOTE_NOTE, type MarketView } from "@/lib/data/types";
 
@@ -33,6 +34,16 @@ export function MarketCard({
         <h3 className="m-0 text-sm font-normal text-ink-muted">
           {market.name} · {market.groupLabel}
         </h3>
+        {market.isInPlay && !isLocked ? (
+          <span className="flex flex-none items-center gap-2.5">
+            <StatusPill variant="live" withDot>
+              In play
+            </StatusPill>
+            {market.closesAtMs ? (
+              <InPlayCountdown closesAtMs={market.closesAtMs} />
+            ) : null}
+          </span>
+        ) : null}
       </div>
 
       {isLocked ? (
