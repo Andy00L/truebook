@@ -2,11 +2,15 @@ import type { HTMLAttributes } from "react";
 import { joinClassNames } from "@/lib/joinClassNames";
 
 type SurfaceCardProps = HTMLAttributes<HTMLDivElement> & {
-  /** Elevated surfaces carry popovers, dialogs, and printed receipts. */
+  /** Raised inner panels (proof blocks, receipts) sit one surface up. */
   elevated?: boolean;
 };
 
-/** The one graphite card material every TrueBook panel is made of. */
+/**
+ * The one card material (v3 noir): borderless, shadowless; elevation is a
+ * surface value (field < surface < elevated). Cards are radius 16, inner
+ * raised panels radius 12.
+ */
 export function SurfaceCard({
   elevated = false,
   className,
@@ -16,8 +20,7 @@ export function SurfaceCard({
     <div
       {...divProps}
       className={joinClassNames(
-        "rounded-md border border-border shadow-card",
-        elevated ? "bg-elevated" : "bg-surface",
+        elevated ? "rounded-sm bg-elevated" : "rounded-md bg-surface",
         className,
       )}
     />

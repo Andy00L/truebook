@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/Button";
+import { StatusPill } from "@/components/ui/StatusPill";
 import { CopyButton } from "@/components/ui/CopyButton";
+import { OdometerNumber } from "@/components/ui/OdometerNumber";
+import { CircleIconButton, IconClose } from "@/components/ui/Icon";
 import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { truncateMiddle } from "@/lib/format";
 import { requestFaucetUsdtForWallet } from "@/lib/chain/placeBet";
@@ -20,9 +23,9 @@ import {
   DEMO_WALLET_ADDRESS,
 } from "@/lib/data/demoHouse";
 
-type FaucetToast =
-  | { kind: "funded"; message: string }
-  | { kind: "error"; message: string };
+type FundedRow = { amount: string; tx: string };
+
+type RequestKind = "usdt" | "sol";
 
 type JudgePanelProps = {
   onClose: () => void;
@@ -34,7 +37,7 @@ type JudgePanelProps = {
 
 const USDC_REQUEST_MS = 1600;
 const SOL_REQUEST_MS = 900;
-const TOAST_DISMISS_MS = 4000;
+const FUNDED_DISMISS_MS = 4000;
 const LOW_SOL_THRESHOLD = 0.001;
 
 function shortReason(reason: string): string {
@@ -45,18 +48,31 @@ function shortReason(reason: string): string {
   return cleaned.length > 90 ? `${cleaned.slice(0, 90)}…` : cleaned;
 }
 
-function formatAmount(value: number, fractionDigits: number): string {
+function formatBalance(value: number, fractionDigits: number): string {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   });
 }
 
+/** The requesting spinner: a 6px dot orbiting a 16px circle. */
+function SpinnerDot() {
+  return (
+    <span
+      aria-hidden="true"
+      className="relative inline-block size-4 flex-none animate-spin-dot"
+    >
+      <span className="absolute left-1/2 top-0 -ml-[3px] size-1.5 rounded-full bg-current" />
+    </span>
+  );
+}
+
 /**
- * Judge mode: fund a wallet and try the app in one click. On the demo source
- * the flow is simulated; on chain the faucet mints test USDT to the connected
- * wallet's ATA and the SOL link is a real devnet airdrop, so the judge can
- * place a real bet right after.
+ * Judge mode (v3 noir): fund the connected wallet in one panel. On the demo
+ * source the flow is simulated; on chain the faucet mints test USDT to the
+ * connected wallet's ATA and the SOL link is a real devnet airdrop. The
+ * panel's payoff is the balance roll: one cream button, then the balance
+ * climbs digit by digit under the blur.
  */
 export function JudgePanel({
   onClose,
@@ -74,10 +90,11 @@ export function JudgePanel({
     owner: string;
     funds: WalletFunds;
   } | null>(null);
-  const [isRequesting, setIsRequesting] = useState(false);
-  const [toast, setToast] = useState<FaucetToast | null>(null);
+  const [requestKind, setRequestKind] = useState<RequestKind | null>(null);
+  const [fundedRow, setFundedRow] = useState<FundedRow | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const requestTimerRef = useRef<number | null>(null);
-  const toastTimerRef = useRef<number | null>(null);
+  const fundedTimerRef = useRef<number | null>(null);
   const retryActionRef = useRef<() => void>(() => {});
 
   // Funds are keyed by owner so a wallet switch never shows stale balances.
@@ -97,14 +114,14 @@ export function JudgePanel({
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose]);
 
-  // Demo request and toast timers cleanup (browser timers).
+  // Demo request and funded-row timers cleanup (browser timers).
   useEffect(() => {
     return () => {
       if (requestTimerRef.current !== null) {
         window.clearTimeout(requestTimerRef.current);
       }
-      if (toastTimerRef.current !== null) {
-        window.clearTimeout(toastTimerRef.current);
+      if (fundedTimerRef.current !== null) {
+        window.clearTimeout(fundedTimerRef.current);
       }
     };
   }, []);
@@ -125,14 +142,14 @@ export function JudgePanel({
     };
   }, [isChainSource, ownerBase58]);
 
-  const showToast = (nextToast: FaucetToast) => {
-    setToast(nextToast);
-    if (toastTimerRef.current !== null) {
-      window.clearTimeout(toastTimerRef.current);
+  const showFundedRow = (nextRow: FundedRow) => {
+    setFundedRow(nextRow);
+    if (fundedTimerRef.current !== null) {
+      window.clearTimeout(fundedTimerRef.current);
     }
-    toastTimerRef.current = window.setTimeout(
-      () => setToast(null),
-      TOAST_DISMISS_MS,
+    fundedTimerRef.current = window.setTimeout(
+      () => setFundedRow(null),
+      FUNDED_DISMISS_MS,
     );
   };
 
@@ -148,247 +165,274 @@ export function JudgePanel({
   };
 
   const requestDemoUsdc = () => {
-    if (isRequesting) {
+    if (requestKind !== null) {
       return;
     }
     retryActionRef.current = requestDemoUsdc;
-    setIsRequesting(true);
-    setToast(null);
+    setRequestKind("usdt");
+    setErrorMessage(null);
+    setFundedRow(null);
     requestTimerRef.current = window.setTimeout(() => {
-      setIsRequesting(false);
+      setRequestKind(null);
       if (faucetFails) {
-        showToast({ kind: "error", message: "Faucet unreachable." });
+        setErrorMessage("Faucet unreachable.");
         return;
       }
       setDemoUsdcBalance((previousBalance) => previousBalance + 1000);
-      showToast({
-        kind: "funded",
-        message: `+1,000.00 test USDC · tx ${truncateMiddle(DEMO_FAUCET_USDC_TX)}`,
+      showFundedRow({
+        amount: "+1,000.00 test USDC",
+        tx: DEMO_FAUCET_USDC_TX,
       });
     }, USDC_REQUEST_MS);
   };
 
   const requestDemoSol = () => {
-    if (isRequesting) {
+    if (requestKind !== null) {
       return;
     }
     retryActionRef.current = requestDemoSol;
-    setIsRequesting(true);
-    setToast(null);
+    setRequestKind("sol");
+    setErrorMessage(null);
+    setFundedRow(null);
     requestTimerRef.current = window.setTimeout(() => {
-      setIsRequesting(false);
+      setRequestKind(null);
       setDemoSolBalance((previousBalance) => previousBalance + 2);
-      showToast({
-        kind: "funded",
-        message: `+2.000 devnet SOL · tx ${truncateMiddle(DEMO_FAUCET_SOL_TX)}`,
-      });
+      showFundedRow({ amount: "+2.000 devnet SOL", tx: DEMO_FAUCET_SOL_TX });
     }, SOL_REQUEST_MS);
   };
 
   const requestChainUsdt = async () => {
-    if (isRequesting || !anchorWallet) {
+    if (requestKind !== null || !anchorWallet) {
       return;
     }
     retryActionRef.current = () => {
       void requestChainUsdt();
     };
-    setIsRequesting(true);
-    setToast(null);
+    setRequestKind("usdt");
+    setErrorMessage(null);
+    setFundedRow(null);
     const usdtBefore = chainFunds ? chainFunds.usdt : 0;
     const result = await requestFaucetUsdtForWallet(anchorWallet);
     if (result.ok) {
       const funds = await refreshChainFunds(anchorWallet.publicKey);
       const granted = funds === null ? 0 : funds.usdt - usdtBefore;
-      showToast({
-        kind: "funded",
-        message:
+      showFundedRow({
+        amount:
           granted > 0
-            ? `+${formatAmount(granted, 2)} test USDT · tx ${truncateMiddle(result.signature)}`
-            : `Test USDT sent · tx ${truncateMiddle(result.signature)}`,
+            ? `+${formatBalance(granted, 2)} test USDT`
+            : "Test USDT sent",
+        tx: result.signature,
       });
     } else {
-      showToast({ kind: "error", message: shortReason(result.reason) });
+      setErrorMessage(shortReason(result.reason));
     }
-    setIsRequesting(false);
+    setRequestKind(null);
   };
 
   const requestChainSol = async () => {
-    if (isRequesting || !publicKey) {
+    if (requestKind !== null || !publicKey) {
       return;
     }
     retryActionRef.current = () => {
       void requestChainSol();
     };
-    setIsRequesting(true);
-    setToast(null);
+    setRequestKind("sol");
+    setErrorMessage(null);
+    setFundedRow(null);
     const result = await requestDevnetSolAirdrop(publicKey);
     if (result.ok) {
       await refreshChainFunds(publicKey);
-      showToast({
-        kind: "funded",
-        message: `+1.000 devnet SOL · tx ${truncateMiddle(result.signature)}`,
-      });
+      showFundedRow({ amount: "+1.000 devnet SOL", tx: result.signature });
     } else {
-      showToast({ kind: "error", message: shortReason(result.reason) });
+      setErrorMessage(shortReason(result.reason));
     }
-    setIsRequesting(false);
+    setRequestKind(null);
   };
 
   const tokenLabel = currencyLabelForSource(dataSource);
   const isWalletMissing = isChainSource && ownerBase58 === null;
+  const walletAddress =
+    isChainSource && ownerBase58 !== null ? ownerBase58 : DEMO_WALLET_ADDRESS;
   const usdtDisplay = isChainSource
     ? chainFunds
-      ? formatAmount(chainFunds.usdt, 2)
-      : "…"
-    : formatAmount(demoUsdcBalance, 2);
+      ? formatBalance(chainFunds.usdt, 2)
+      : "0.00"
+    : formatBalance(demoUsdcBalance, 2);
   const solDisplay = isChainSource
     ? chainFunds
-      ? formatAmount(chainFunds.sol, 3)
-      : "…"
-    : formatAmount(demoSolBalance, 3);
+      ? formatBalance(chainFunds.sol, 3)
+      : "0.000"
+    : formatBalance(demoSolBalance, 3);
+  const isLowSol =
+    isChainSource &&
+    !isWalletMissing &&
+    chainFunds !== null &&
+    chainFunds.sol < LOW_SOL_THRESHOLD;
+  const actionsDisabled = requestKind !== null || isWalletMissing;
 
   return (
     <>
-      <div className="fixed inset-0 z-60" onClick={onClose} />
+      <div
+        className="fixed inset-0 z-60 animate-fade-in bg-scrim"
+        onClick={onClose}
+        role="presentation"
+      />
       <div
         role="dialog"
         aria-label="Judge mode"
-        className="fixed right-4 top-19 z-70 w-95 max-w-[calc(100vw-32px)] animate-card-in rounded-lg border border-border bg-elevated p-5 shadow-card sm:right-8"
+        className="fixed left-4 top-18 z-70 max-h-[calc(100dvh-96px)] w-95 max-w-[calc(100vw-32px)] animate-card-in overflow-y-auto rounded-md bg-surface p-5 shadow-panel sm:left-8"
       >
-        <div className="flex items-center justify-between">
-          <span className="text-base font-semibold text-ink">Judge mode</span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close judge mode"
-            className="focus-ring -my-3 -mr-3.5 flex size-11 cursor-pointer items-center justify-center rounded-sm border border-transparent bg-transparent text-lg text-ink-muted hover:text-ink"
-          >
-            ✕
-          </button>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-lg font-medium tracking-tight text-ink">
+            Judge mode
+          </span>
+          <CircleIconButton ariaLabel="Close judge mode" onClick={onClose}>
+            <IconClose />
+          </CircleIconButton>
         </div>
-        <p className="mt-2 text-sm leading-normal text-ink-muted">
+        <p className="mb-0 mt-2 text-sm leading-normal text-ink-muted">
           {isChainSource
             ? "Fund your connected wallet, then place a real devnet bet."
             : "Fund a test wallet and try the app in one click."}
         </p>
 
-        <div className="mt-3.5 rounded-sm border border-border bg-surface p-3">
-          {isWalletMissing ? (
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs leading-normal text-ink-muted">
-                Faucet funds go to the connected wallet.
-              </span>
+        {isWalletMissing ? (
+          <div className="mt-4.5 rounded-sm bg-elevated px-4.5 py-4">
+            <div className="text-sm leading-normal text-ink">
+              Faucet funds go to the connected wallet.
+            </div>
+            <div className="mt-3">
               <ConnectWalletButton />
             </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <span className="eyebrow flex-none text-ink-faint">
-                  connected wallet
-                </span>
-                <span className="ml-auto font-mono text-xs text-ink-muted">
-                  {truncateMiddle(
-                    isChainSource && ownerBase58 !== null
-                      ? ownerBase58
-                      : DEMO_WALLET_ADDRESS,
-                    6,
-                    5,
-                  )}
-                </span>
-                <CopyButton
-                  value={
-                    isChainSource && ownerBase58 !== null
-                      ? ownerBase58
-                      : DEMO_WALLET_ADDRESS
-                  }
-                  ariaLabel="Copy wallet address"
+          </div>
+        ) : (
+          <>
+            <div className="mt-4.5 flex items-center gap-2.5">
+              <span className="inline-flex min-w-0 items-center gap-2 rounded-full bg-elevated px-4 py-2.5 font-mono text-xs tabular-nums text-ink">
+                <span
+                  aria-hidden="true"
+                  className="size-2 flex-none rounded-full bg-accent"
                 />
-              </div>
-              <div className="my-2.5 border-t border-dashed border-border" />
-              <div className="flex flex-col gap-1.5 font-mono text-sm tabular-nums">
-                <div className="flex justify-between">
-                  <span className="text-ink-muted">{tokenLabel}</span>
-                  <span className="text-ink">{usdtDisplay}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-ink-muted">SOL</span>
-                  <span className="text-ink">{solDisplay}</span>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+                <span className="overflow-hidden text-ellipsis whitespace-nowrap">
+                  {truncateMiddle(walletAddress, 6, 5)}
+                </span>
+              </span>
+              <CopyButton value={walletAddress} ariaLabel="Copy wallet address" />
+            </div>
 
-        {isChainSource &&
-        !isWalletMissing &&
-        chainFunds !== null &&
-        chainFunds.sol < LOW_SOL_THRESHOLD ? (
-          <p className="mt-2 text-xs leading-normal text-amber">
+            <div className="mt-5 grid grid-cols-2 gap-4">
+              <div>
+                <OdometerNumber
+                  value={usdtDisplay}
+                  className="text-xl font-light tabular-nums leading-tight tracking-tight text-ink"
+                />
+                <div className="mt-1 text-sm text-ink-muted">
+                  Test {tokenLabel}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <OdometerNumber
+                    value={solDisplay}
+                    className="text-xl font-light tabular-nums leading-tight tracking-tight text-ink"
+                  />
+                  {isLowSol ? (
+                    <StatusPill variant="amber">Low SOL</StatusPill>
+                  ) : null}
+                </div>
+                <div className="mt-1 text-sm text-ink-muted">Devnet SOL</div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {isLowSol ? (
+          <p className="mb-0 mt-4 text-sm leading-normal text-ink-muted">
             Request devnet SOL first: faucet and bet transactions pay their
             fees in SOL.
           </p>
         ) : null}
 
+        {errorMessage ? (
+          <div
+            role="alert"
+            className="mt-4 flex items-center justify-between gap-3 rounded-sm border border-danger bg-danger-soft px-4 py-3"
+          >
+            <span className="text-sm leading-normal text-ink">
+              {errorMessage}
+            </span>
+            <button
+              type="button"
+              onClick={() => retryActionRef.current()}
+              className="focus-ring flex-none cursor-pointer rounded-full border-0 bg-transparent px-1 py-1 text-sm font-medium text-accent"
+            >
+              Retry
+            </button>
+          </div>
+        ) : null}
+
         <Button
           variant="primary"
           size="lg"
-          disabled={isRequesting || isWalletMissing}
+          disabled={actionsDisabled}
           onClick={isChainSource ? requestChainUsdt : requestDemoUsdc}
-          className="mt-3.5 w-full gap-2.5"
+          className="mt-4.5 w-full gap-2"
         >
-          {isRequesting ? (
+          {requestKind === "usdt" ? (
             <>
-              <span className="size-1.5 animate-confirm-dot rounded-sm bg-ink-faint" />
-              Requesting…
+              <SpinnerDot />
+              Requesting...
             </>
           ) : (
             `Request test ${tokenLabel}`
           )}
         </Button>
-        <div className="mt-1">
+
+        <div
+          className="grid transition-[grid-template-rows] duration-250 ease-standard"
+          style={{ gridTemplateRows: fundedRow ? "1fr" : "0fr" }}
+        >
+          <div className="overflow-hidden">
+            {fundedRow ? (
+              <div
+                role="status"
+                className="mt-3.5 flex items-center justify-between gap-3.5 rounded-sm bg-elevated px-4 py-3"
+              >
+                <span className="min-w-0">
+                  <span className="block text-base font-medium tabular-nums text-ink">
+                    {fundedRow.amount}
+                  </span>
+                  <span className="mt-0.5 block overflow-hidden text-ellipsis whitespace-nowrap font-mono text-xs tabular-nums text-ink-muted">
+                    tx {truncateMiddle(fundedRow.tx)}
+                  </span>
+                </span>
+                <StatusPill variant="accent" animateIn animateInDelayMs={100}>
+                  Funded
+                </StatusPill>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mt-3.5 text-center">
           <button
             type="button"
-            disabled={isRequesting || isWalletMissing}
+            disabled={actionsDisabled}
             onClick={isChainSource ? requestChainSol : requestDemoSol}
-            className="focus-ring min-h-11 cursor-pointer rounded-sm border border-transparent bg-transparent px-1 font-mono text-xs text-accent hover:underline disabled:cursor-default disabled:text-ink-faint disabled:no-underline"
+            className="focus-ring inline-flex cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent px-2.5 py-1.5 text-sm font-medium text-accent disabled:cursor-default disabled:opacity-40"
           >
-            request devnet SOL →
+            {requestKind === "sol" ? (
+              <>
+                <SpinnerDot />
+                Requesting...
+              </>
+            ) : (
+              "Request devnet SOL"
+            )}
           </button>
         </div>
 
-        {toast?.kind === "funded" ? (
-          <div
-            role="status"
-            className="mt-2.5 flex animate-fade-in items-center gap-2.5 rounded-sm border border-accent bg-surface px-3 py-2.5"
-          >
-            <span className="eyebrow flex-none font-mono text-accent">
-              FUNDED
-            </span>
-            <span className="overflow-hidden text-ellipsis whitespace-nowrap font-mono text-xs tabular-nums text-ink-muted">
-              {toast.message}
-            </span>
-          </div>
-        ) : null}
-        {toast?.kind === "error" ? (
-          <div
-            role="alert"
-            className="mt-2.5 flex animate-fade-in items-center gap-2.5 rounded-sm border border-danger bg-surface px-3 py-2.5"
-          >
-            <span className="size-2 flex-none rounded-sm bg-danger" />
-            <span className="text-xs leading-normal text-ink-muted">
-              {toast.message}
-            </span>
-            <button
-              type="button"
-              onClick={() => retryActionRef.current()}
-              className="focus-ring -my-2.5 ml-auto min-h-11 cursor-pointer rounded-sm border border-transparent bg-transparent px-1 font-mono text-xs text-accent hover:underline"
-            >
-              retry
-            </button>
-          </div>
-        ) : null}
-
-        <p className="mt-3 text-xs leading-normal text-ink-faint">
+        <p className="mb-0 mt-3.5 text-center text-xs leading-normal text-ink-muted">
           Devnet test funds only: no real value, no KYC.
         </p>
       </div>

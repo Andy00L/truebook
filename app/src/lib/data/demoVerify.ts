@@ -36,19 +36,19 @@ const VERIFY_INDEX: ReadonlyArray<VerifyMarketView> = [
       "4d2c70b8f31a9e5d6c2b7a4f8e9d0c1b2a3f4e5d6c7b8a90e1d2c3b4a5f6e7d8101033",
     merkleNodes: [
       {
-        label: "node 0 · leaf",
+        label: "Node 0 · leaf",
         hash: "0669ea7c4d2b8f1a3e5c9d7b2f4a6e8c1d3b5f7a9e0c2d4b6f8a1e3c5d7e9b1ab9537d",
       },
       {
-        label: "node 1",
+        label: "Node 1",
         hash: "f14c9b2e7d5a8c1f4b6e9d2a5c8f1b4e7d0a3c6f9b2e5d8a1c4f7b0e3d6a9ca2d6e0",
       },
       {
-        label: "node 2",
+        label: "Node 2",
         hash: "83d5f7a1c4e6b9d2f5a8c1e4b7d0f3a6c9e2b5d8f1a4c7e0b3d6f9a2c5e8bc1b4a9",
       },
       {
-        label: "node 3",
+        label: "Node 3",
         hash: "5e2a8c4f7b1d3e6a9c2f5b8d1e4a7c0f3b6d9e2a5c8f1b4d7e0a3c6f9b2d5ed97f31",
       },
     ],

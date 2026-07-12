@@ -2,43 +2,29 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { MarketGrid } from "@/components/ui/MarketGrid";
 
-/** Loading state mirroring the final layout: header plus three market cards. */
+/** Loading state mirroring the final layout: header plus market cards. */
 export function MatchSkeleton() {
   return (
     <div aria-hidden="true">
-      <SurfaceCard className="p-5">
-        <Skeleton className="h-3 w-55" />
-        <div className="mt-4 flex items-center justify-between gap-4">
-          <Skeleton className="h-8 w-85 max-w-3/5" />
-          <Skeleton className="h-8 w-35" />
+      <SurfaceCard className="flex items-start justify-between gap-6 p-6">
+        <div>
+          <Skeleton className="h-3 w-50" />
+          <Skeleton className="mt-3.5 h-5.5 w-62" />
+          <Skeleton className="mt-3 h-3 w-40" />
+        </div>
+        <div className="flex flex-col items-end gap-3.5">
+          <Skeleton className="h-7.5 w-28" />
+          <Skeleton className="h-6.5 w-24 rounded-full" />
         </div>
       </SurfaceCard>
       <MarketGrid>
-        {[0, 1, 2].map((cardIndex) => (
-          <SurfaceCard key={cardIndex} className="p-5">
-            <Skeleton
-              className="h-3 w-30"
-              style={{ animationDelay: `${cardIndex * 120}ms` }}
-            />
-            <div className="mt-3.5 flex gap-2">
-              {[0, 1, 2].slice(0, cardIndex === 0 ? 3 : 2).map((cellIndex) => (
-                <Skeleton
-                  key={cellIndex}
-                  className="h-18 flex-1"
-                  style={{ animationDelay: `${cardIndex * 120}ms` }}
-                />
-              ))}
-            </div>
-            <Skeleton
-              className="mt-4 h-1 w-full"
-              style={{ animationDelay: `${cardIndex * 120}ms` }}
-            />
-            <Skeleton
-              className="mt-2.5 h-3 w-3/5"
-              style={{ animationDelay: `${cardIndex * 120}ms` }}
-            />
-          </SurfaceCard>
-        ))}
+        <SurfaceCard className="p-5">
+          <Skeleton className="h-3 w-35" />
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <Skeleton className="h-29.5" style={{ animationDelay: "120ms" }} />
+            <Skeleton className="h-29.5" style={{ animationDelay: "120ms" }} />
+          </div>
+        </SurfaceCard>
       </MarketGrid>
     </div>
   );

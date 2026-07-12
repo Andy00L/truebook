@@ -12,6 +12,13 @@ export const DEMO_HOUSE_STATS = {
   violationsFoundLabel: "0",
 } as const;
 
+/** Demo delta line under the vault figure; chain omits it (no history yet). */
+export const DEMO_HOUSE_DELTA = {
+  text: "+412,038.55 (0.4%)",
+  period: "past week",
+  isUp: true,
+} as const;
+
 export const DEMO_WALLET_ADDRESS =
   "7xKpQm4Ns8vBtWzYcRj2LdGhE6fUiA9oXkP3mQw5v9fQe";
 

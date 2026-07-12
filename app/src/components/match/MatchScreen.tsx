@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { PageShell } from "@/components/ui/PageShell";
-import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { TopBar } from "@/components/ui/TopBar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorPanel } from "@/components/ui/ErrorPanel";
 import { MarketGrid } from "@/components/ui/MarketGrid";
@@ -17,7 +17,6 @@ import {
   type PlaceBetResult,
   type SlipQuote,
 } from "@/components/match/BetSlip";
-import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { useDemoMatch, type MatchScreenView } from "@/lib/data/useDemoMatch";
 import { useChainMatch } from "@/lib/chain/useChainMatch";
 import { placeBetOnChain } from "@/lib/chain/placeBet";
@@ -66,10 +65,7 @@ export function MatchScreen({
   if (!match && !isChainPending) {
     return (
       <PageShell>
-        <Breadcrumb
-          segments={[{ label: "Fixtures", href: "/" }, { label: "Match" }]}
-          actions={isChainSource ? <ConnectWalletButton /> : undefined}
-        />
+        <TopBar withWallet={isChainSource} />
         <EmptyState
           message={
             isChainSource
@@ -79,7 +75,7 @@ export function MatchScreen({
           action={
             <Link
               href="/"
-              className="focus-ring rounded-sm border border-transparent px-1 py-3 text-sm text-accent no-underline hover:underline"
+              className="focus-ring rounded-full px-2 py-2 text-sm font-medium text-accent no-underline hover:underline"
             >
               Back to the lobby
             </Link>
@@ -160,15 +156,7 @@ export function MatchScreen({
 
   return (
     <PageShell>
-      <Breadcrumb
-        segments={[
-          { label: "Fixtures", href: "/" },
-          {
-            label: match ? `${match.homeTeam} vs ${match.awayTeam}` : "Match",
-          },
-        ]}
-        actions={isChainSource ? <ConnectWalletButton /> : undefined}
-      />
+      <TopBar withWallet={isChainSource} />
 
       {view === "loading" ? (
         <MatchSkeleton />
@@ -177,17 +165,17 @@ export function MatchScreen({
           {match ? <ScoreHeaderCard match={match} /> : null}
 
           {view === "oddsError" ? (
-            <div className="mt-4">
+            <div className="mt-5">
               <ErrorPanel
                 title={
                   isChainSource
-                    ? "Couldn't load the devnet market"
-                    : "Couldn't load market prices"
+                    ? "The devnet RPC did not respond"
+                    : "The odds feed didn't answer"
                 }
                 message={
                   isChainSource
-                    ? "The Solana devnet RPC didn't respond."
-                    : "The TxLINE consensus feed didn't respond."
+                    ? "The market can't be read until the connection returns."
+                    : "TxLINE consensus is unreachable, so no price can be served."
                 }
                 onRetry={isChainSource ? chainMatch.retry : demoMatch.retryOdds}
               />
@@ -200,7 +188,6 @@ export function MatchScreen({
                 <MarketCard
                   key={market.marketKey}
                   market={market}
-                  oddsPulses={isChainSource ? {} : demoMatch.oddsPulses}
                   selectedOutcomeKey={slipQuote?.outcomeKey ?? null}
                   onSelectOutcome={handleSelectOutcome}
                   enterDelayMs={marketIndex * 40}

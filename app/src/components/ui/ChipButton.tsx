@@ -5,7 +5,7 @@ type ChipButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   isActive: boolean;
 };
 
-/** Selectable chip: ticket filters, replay match picker, speed control. */
+/** Selectable pill chip: the replay match picker and its kin. */
 export function ChipButton({
   isActive,
   className,
@@ -18,10 +18,10 @@ export function ChipButton({
       type={type}
       aria-pressed={isActive}
       className={joinClassNames(
-        "transition-press focus-ring inline-flex h-11 cursor-pointer items-center gap-2 rounded-sm border px-4 text-sm font-medium active:scale-98",
+        "transition-press focus-ring inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border-0 px-4 text-sm active:scale-97",
         isActive
-          ? "border-accent bg-accent-soft text-accent"
-          : "border-border bg-elevated text-ink-muted hover:border-ink-faint",
+          ? "bg-lift font-medium text-ink"
+          : "bg-elevated font-normal text-ink-muted hover:brightness-130",
         className,
       )}
     />

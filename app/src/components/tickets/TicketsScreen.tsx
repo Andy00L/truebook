@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { PageShell } from "@/components/ui/PageShell";
-import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { TopBar } from "@/components/ui/TopBar";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorPanel } from "@/components/ui/ErrorPanel";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { TicketRow } from "@/components/tickets/TicketRow";
 import { TicketsSkeleton } from "@/components/tickets/TicketsSkeleton";
-import { ChipButton } from "@/components/ui/ChipButton";
 import {
   DEMO_TICKETS,
   filterTickets,
@@ -17,19 +18,19 @@ import {
 
 export type TicketsScreenView = "tickets" | "loading" | "empty" | "error";
 
-const FILTERS: ReadonlyArray<TicketFilter> = [
-  "all",
-  "live",
-  "won",
-  "lost",
-  "refundable",
+const FILTER_LABELS: ReadonlyArray<{ key: TicketFilter; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "live", label: "Live" },
+  { key: "won", label: "Won" },
+  { key: "lost", label: "Lost" },
+  { key: "refundable", label: "Refunded" },
 ];
 
 type TicketsScreenProps = {
   initialView: TicketsScreenView;
 };
 
-/** The bettor's tickets, each row expanding to its proof receipt. */
+/** The bettor's tickets: accordion rows opening into on-chain receipts. */
 export function TicketsScreen({ initialView }: TicketsScreenProps) {
   const [view, setView] = useState<TicketsScreenView>(initialView);
   const [activeFilter, setActiveFilter] = useState<TicketFilter>("all");
@@ -42,72 +43,76 @@ export function TicketsScreen({ initialView }: TicketsScreenProps) {
 
   return (
     <PageShell>
-      <Breadcrumb
-        withMascot
-        tagline="Provably-fair sportsbook on Solana"
-        segments={[{ label: "Fixtures", href: "/" }, { label: "Tickets" }]}
-      />
+      <TopBar active="tickets" />
+
+      <div className="flex items-baseline justify-between gap-4 border-b border-border px-1 pb-3.5">
+        <span className="text-sm text-ink-muted">Your tickets</span>
+        <span className="font-mono text-xs tabular-nums text-ink-muted">
+          {DEMO_TICKETS.length} tickets · {liveCount} live
+        </span>
+      </div>
 
       {view === "loading" ? (
         <TicketsSkeleton />
       ) : view === "error" ? (
-        <ErrorPanel
-          title="Couldn't load your tickets"
-          message="The ticket index didn't respond."
-          onRetry={() => setView("tickets")}
-        />
+        <div className="mt-5">
+          <ErrorPanel
+            title="Your tickets didn't load"
+            message="The devnet RPC did not respond. Nothing is lost; tickets live on chain."
+            onRetry={() => setView("tickets")}
+          />
+        </div>
       ) : view === "empty" ? (
-        <EmptyState
-          message="No tickets yet."
-          action={
-            <Link
-              href="/"
-              className="focus-ring rounded-sm border border-transparent px-2 py-3 text-sm text-accent no-underline hover:underline"
-            >
-              Browse fixtures →
-            </Link>
-          }
-        />
+        <div className="mt-5">
+          <EmptyState
+            message="No tickets yet. Take a price on an open market and it will settle here."
+            action={
+              <Link
+                href="/"
+                className="focus-ring rounded-full px-2 py-2 text-sm font-medium text-accent no-underline hover:underline"
+              >
+                Browse fixtures
+              </Link>
+            }
+          />
+        </div>
       ) : (
         <>
-          <div className="flex items-baseline justify-between gap-4">
-            <span className="eyebrow text-ink-muted">Your tickets</span>
-            <span className="font-mono text-xs tabular-nums text-ink-faint">
-              {DEMO_TICKETS.length} tickets · {liveCount} live
-            </span>
+          <div className="mt-5 overflow-x-auto">
+            <SegmentedControl
+              ariaLabel="Filter tickets"
+              activeKey={activeFilter}
+              onSelect={(filterKey) =>
+                setActiveFilter(filterKey as TicketFilter)
+              }
+              options={FILTER_LABELS.map((filterOption) => ({
+                key: filterOption.key,
+                label: filterOption.label,
+                detail: String(
+                  filterTickets(DEMO_TICKETS, filterOption.key).length,
+                ),
+              }))}
+            />
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            {FILTERS.map((filterName) => (
-              <ChipButton
-                key={filterName}
-                isActive={activeFilter === filterName}
-                onClick={() => setActiveFilter(filterName)}
-              >
-                {filterName}
-                <span className="font-mono text-xs tabular-nums text-ink-faint">
-                  {filterTickets(DEMO_TICKETS, filterName).length}
-                </span>
-              </ChipButton>
-            ))}
-          </div>
-
-          <div className="mt-4 flex flex-col gap-3">
-            {visibleTickets.length === 0 ? (
+          {visibleTickets.length === 0 ? (
+            <div className="mt-4">
               <EmptyState
-                message={`No ${activeFilter} tickets right now.`}
+                message={`No ${activeFilter === "refundable" ? "refunded" : activeFilter} tickets right now.`}
                 action={
                   <button
                     type="button"
                     onClick={() => setActiveFilter("all")}
-                    className="focus-ring cursor-pointer rounded-sm border border-transparent bg-transparent px-2 py-3 text-sm text-accent hover:underline"
+                    className="focus-ring cursor-pointer rounded-full border-0 bg-transparent px-2 py-2 text-sm font-medium text-accent hover:underline"
                   >
-                    Show all tickets
+                    Show all
                   </button>
                 }
               />
-            ) : (
-              visibleTickets.map((ticket, ticketIndex) => (
+            </div>
+          ) : (
+            <SurfaceCard className="mt-4 p-2.5">
+              {visibleTickets.map((ticket, ticketIndex) => (
                 <TicketRow
                   key={ticket.ticketId}
                   ticket={ticket}
@@ -121,9 +126,9 @@ export function TicketsScreen({ initialView }: TicketsScreenProps) {
                   }
                   enterDelayMs={ticketIndex * 40}
                 />
-              ))
-            )}
-          </div>
+              ))}
+            </SurfaceCard>
+          )}
         </>
       )}
     </PageShell>

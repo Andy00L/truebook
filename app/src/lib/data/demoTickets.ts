@@ -59,10 +59,10 @@ export const DEMO_TICKETS: ReadonlyArray<TicketView> = [
     amountLabel: "462.50",
     receiptTitle: "Open ticket",
     receiptRows: [
-      { label: "stake", value: "250.00 USDC" },
-      { label: "quoted odds", value: "1.85" },
-      { label: "potential payout", value: "462.50 USDC" },
-      { label: "placed", value: "Jul 5 · 20:14:32 UTC" },
+      { label: "Stake", value: "250.00 USDC" },
+      { label: "Quoted odds", value: "1.85" },
+      { label: "Potential payout", value: "462.50 USDC" },
+      { label: "Placed", value: "Jul 5 · 20:14:32 UTC" },
     ],
     priceLine: "consensus 1.88 · margin 1.6% · your price 1.85",
     proof: {
@@ -87,10 +87,10 @@ export const DEMO_TICKETS: ReadonlyArray<TicketView> = [
     receiptTitle: "Proof receipt",
     outcomeLine: "France · won",
     receiptRows: [
-      { label: "stake", value: "100.00 USDC" },
-      { label: "odds", value: "2.06" },
-      { label: "payout", value: "206.00 USDC" },
-      { label: "settled", value: "Jul 5 · 21:47:19 UTC" },
+      { label: "Stake", value: "100.00 USDC" },
+      { label: "Odds", value: "2.06" },
+      { label: "Payout", value: "206.00 USDC" },
+      { label: "Settled", value: "Jul 5 · 21:47:19 UTC" },
     ],
     priceLine: "consensus 2.10 · margin 2.0% · your price 2.06",
     proof: {
@@ -119,10 +119,10 @@ export const DEMO_TICKETS: ReadonlyArray<TicketView> = [
     receiptTitle: "Proof receipt",
     outcomeLine: "No goal for Japan · lost",
     receiptRows: [
-      { label: "stake", value: "75.00 USDC" },
-      { label: "odds", value: "1.95" },
-      { label: "payout", value: "0.00 USDC" },
-      { label: "settled", value: "Jul 1 · 22:03:44 UTC" },
+      { label: "Stake", value: "75.00 USDC" },
+      { label: "Odds", value: "1.95" },
+      { label: "Payout", value: "0.00 USDC" },
+      { label: "Settled", value: "Jul 1 · 22:03:44 UTC" },
     ],
     priceLine: "consensus 1.99 · margin 1.8% · your price 1.95",
     proof: {
@@ -148,10 +148,10 @@ export const DEMO_TICKETS: ReadonlyArray<TicketView> = [
     receiptTitle: "Proof receipt",
     outcomeLine: "3 goals · lost",
     receiptRows: [
-      { label: "stake", value: "50.00 USDC" },
-      { label: "served odds", value: "2.28" },
-      { label: "allowed floor", value: "2.37" },
-      { label: "refunded", value: "50.00 USDC", tone: "danger" },
+      { label: "Stake", value: "50.00 USDC" },
+      { label: "Served odds", value: "2.28" },
+      { label: "Allowed floor", value: "2.37" },
+      { label: "Refunded", value: "50.00 USDC", tone: "danger" },
     ],
     priceLine: "consensus 2.41 · margin 1.8% · served 2.28, below the allowed floor",
     proof: {

@@ -8,7 +8,7 @@ type ErrorPanelProps = {
   retryLabel?: string;
 };
 
-/** Error state, visually distinct from empty: red dot, cause, retry path. */
+/** Error state, visually distinct from empty: cause named, retry path. */
 export function ErrorPanel({
   title,
   message,
@@ -16,13 +16,13 @@ export function ErrorPanel({
   retryLabel = "Retry",
 }: ErrorPanelProps) {
   return (
-    <SurfaceCard className="flex animate-card-in flex-col items-start gap-2 p-8">
-      <div className="flex items-center gap-2.5">
-        <span aria-hidden="true" className="size-2 rounded-sm bg-danger" />
-        <span className="text-lg font-semibold text-ink">{title}</span>
-      </div>
-      <p className="m-0 text-sm text-ink-muted">{message}</p>
-      <Button onClick={onRetry} className="mt-3">
+    <SurfaceCard className="flex animate-card-in flex-col items-center px-6 py-12 text-center">
+      <span className="text-sm font-medium text-danger">Something failed</span>
+      <span className="mt-2 text-base font-medium text-ink">{title}</span>
+      <p className="m-0 mt-1.5 max-w-[44ch] text-sm leading-normal text-ink-muted">
+        {message}
+      </p>
+      <Button onClick={onRetry} size="lg" className="mt-5">
         {retryLabel}
       </Button>
     </SurfaceCard>

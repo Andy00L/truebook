@@ -1,63 +1,63 @@
 @import "tailwindcss";
 
 /*
- * TrueBook token sheet, wired as the Tailwind v4 theme.
+ * TrueBook token sheet v3 (noir), wired as the Tailwind v4 theme.
  * sourceRef: docs/UI_DESIGN_SYSTEM.md (the single source of truth; if this
  * file and the sheet ever differ, the sheet wins).
+ * Role mapping vs the sheet: card -> surface, raised -> elevated (the class
+ * names predate v3 and every component already reads them).
  */
 @theme {
-  /* Palette (seven roles plus variants) */
-  --color-field: #0b0e11;
-  --color-surface: #12161b;
-  --color-elevated: #171c22;
-  --color-border: #1e242b;
-  --color-ink: #e8ecf1;
-  --color-ink-muted: #8a94a3;
-  --color-ink-faint: #566072;
-  --color-accent: #00e676;
-  --color-accent-soft: rgba(0, 230, 118, 0.12);
-  --color-accent-deep: #00a050;
-  --color-on-accent: #04120a;
-  --color-amber: #f5a623;
-  --color-danger: #ff5252;
-  --color-danger-soft: rgba(255, 82, 82, 0.12);
-  --color-scrim: rgba(11, 14, 17, 0.55);
+  /* Palette: elevation is a surface value (field < surface < elevated < lift) */
+  --color-field: #0d0d0d;
+  --color-surface: #161615;
+  --color-elevated: #1f1f1e;
+  --color-lift: #2c2c2a;
+  --color-border: rgba(252, 252, 252, 0.07);
+  --color-ink: #fcfcfc;
+  --color-ink-muted: #7e7b76;
+  --color-ink-faint: #585652;
+  --color-accent: #37bc65;
+  --color-accent-soft: rgba(55, 188, 101, 0.12);
+  --color-blue: #5b88d9;
+  --color-amber: #d6a243;
+  --color-amber-soft: rgba(214, 162, 67, 0.1);
+  --color-danger: #e5484d;
+  --color-danger-soft: rgba(229, 72, 77, 0.1);
+  --color-scrim: rgba(13, 13, 13, 0.65);
+  /* Chart gradient top stop (32% to transparent), rendered as dots only */
+  --color-chart-fill: #409652;
 
-  /* Shape: radii 8 (chips, inputs), 12 (cards, buttons), 16 (dialogs, slip) */
-  --radius-sm: 8px;
-  --radius-md: 12px;
+  /* Shape: 12 inner panels and inputs, 16 cards; interactive shapes are pills */
+  --radius-sm: 12px;
+  --radius-md: 16px;
   --radius-lg: 16px;
 
-  /* Type scale, dense workstation steps: 11 12 13 14 16 20 28 40 */
+  /* Type scale: 11 12 13 15 17 22 32 44 */
   --text-2xs: 11px;
   --text-2xs--line-height: 16px;
   --text-xs: 12px;
   --text-xs--line-height: 18px;
   --text-sm: 13px;
   --text-sm--line-height: 20px;
-  --text-base: 14px;
+  --text-base: 15px;
   --text-base--line-height: 22px;
-  --text-lg: 16px;
+  --text-lg: 17px;
   --text-lg--line-height: 24px;
-  --text-xl: 20px;
+  --text-xl: 22px;
   --text-xl--line-height: 28px;
-  --text-2xl: 28px;
-  --text-2xl--line-height: 34px;
-  --text-4xl: 40px;
-  --text-4xl--line-height: 44px;
+  --text-2xl: 32px;
+  --text-2xl--line-height: 37px;
+  --text-4xl: 44px;
+  --text-4xl--line-height: 48px;
 
-  /* Content width: 1200 to 1440; the exports settled on 1320 */
-  --container-shell: 1320px;
+  /* Content width: the accepted exports settled on 1120 */
+  --container-shell: 1120px;
 
-  /* Depth: elevation carried by surface shift and border, shadows subtle */
-  --shadow-card:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 1px 2px rgba(0, 0, 0, 0.4),
-    0 8px 24px rgba(0, 0, 0, 0.32);
-  --shadow-elevated:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 4px rgba(0, 0, 0, 0.45),
-    0 16px 40px rgba(0, 0, 0, 0.4);
+  /* Depth: no card shadows; one soft drop reserved for popovers and drawers */
+  --shadow-panel: 0 16px 40px rgba(0, 0, 0, 0.45);
 
-  /* Motion: enter 200ms, exit 160ms, stagger 40ms */
+  /* Motion: enter 200ms, exit 160ms, on-screen 250ms, stagger 40ms */
   --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
@@ -67,14 +67,13 @@
   --animate-slip-in: slip-in 200ms var(--ease-enter) both;
   --animate-slip-up: slip-up 200ms var(--ease-enter) both;
   --animate-skeleton: skeleton-pulse 1.6s var(--ease-standard) infinite;
-  --animate-live-dot: live-dot 2s var(--ease-standard) infinite;
-  --animate-confirm-dot: live-dot 1s var(--ease-standard) infinite;
-
-  /* Mascot dribble (the empty-state motif); one shared 0.9s cycle */
-  --animate-mascot-bob: mascot-bob 0.9s var(--ease-standard) infinite;
-  --animate-mascot-ball: mascot-ball 0.9s infinite;
-  --animate-mascot-kick-down: mascot-kick-down 0.9s steps(1, end) infinite;
-  --animate-mascot-kick-up: mascot-kick-up 0.9s steps(1, end) infinite;
+  --animate-roll-in: roll-in 450ms var(--ease-enter) backwards;
+  --animate-delta-chip: delta-chip 1.2s var(--ease-standard) both;
+  --animate-ping-halo: ping-halo 2.2s var(--ease-standard) infinite;
+  --animate-pill-in: pill-in 250ms var(--ease-standard) backwards;
+  --animate-draw-line: draw-line 600ms var(--ease-standard) forwards;
+  --animate-fill-fade: fill-fade 250ms var(--ease-standard) forwards;
+  --animate-spin-dot: spin 800ms linear infinite;
 
   @keyframes card-in {
     from {
@@ -89,7 +88,7 @@
   @keyframes slip-in {
     from {
       opacity: 0;
-      transform: translateX(24px);
+      transform: translateX(280px);
     }
     to {
       opacity: 1;
@@ -99,7 +98,7 @@
   @keyframes slip-up {
     from {
       opacity: 0;
-      transform: translateY(32px);
+      transform: translateY(280px);
     }
     to {
       opacity: 1;
@@ -123,100 +122,100 @@
       opacity: 1;
     }
   }
-  @keyframes live-dot {
-    0%,
-    100% {
+  /* The signature motion: a digit rolls in under a blur (odometer) */
+  @keyframes roll-in {
+    from {
+      transform: translateY(0.55em);
+      opacity: 0;
+      filter: blur(6px);
+    }
+    to {
+      transform: none;
       opacity: 1;
-    }
-    50% {
-      opacity: 0.35;
+      filter: blur(0);
     }
   }
-
-  /* Mascot dribble frames, emitted through the animate-mascot-* tokens */
-  @keyframes mascot-bob {
-  0%,
-  40%,
-  70%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(2px);
-  }
-}
-@keyframes mascot-ball {
-  0% {
-    transform: translateY(0) scale(1, 1);
-    animation-timing-function: var(--ease-exit);
-  }
-  45% {
-    transform: translateY(28px) scale(1, 1);
-    animation-timing-function: linear;
-  }
-  50% {
-    transform: translateY(28px) scale(1.2, 0.8);
-    animation-timing-function: linear;
-  }
-  55% {
-    transform: translateY(28px) scale(1, 1);
-    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
-  }
-  100% {
-    transform: translateY(0) scale(1, 1);
-  }
-}
-@keyframes mascot-kick-down {
-  0%,
-  60%,
-  100% {
-    opacity: 1;
-  }
-  40% {
-    opacity: 0;
-  }
-}
-  @keyframes mascot-kick-up {
-    0%,
-    60%,
+  /* Odds tick companion: the signed delta appears for 1.2s then lifts away */
+  @keyframes delta-chip {
+    0% {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    12% {
+      opacity: 1;
+      transform: none;
+    }
+    78% {
+      opacity: 1;
+      transform: none;
+    }
     100% {
       opacity: 0;
+      transform: translateY(-4px);
     }
-    40% {
+  }
+  @keyframes ping-halo {
+    0% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    70%,
+    100% {
+      transform: scale(3);
+      opacity: 0;
+    }
+  }
+  @keyframes pill-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
       opacity: 1;
+      transform: none;
+    }
+  }
+  /* Chart draw-on: pathLength is normalized to 1 on the svg path */
+  @keyframes draw-line {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes fill-fade {
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
     }
   }
 }
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-tiktok);
   --font-mono: var(--font-geist-mono);
 }
 
-/* One focus treatment everywhere: 2px accent-soft ring plus accent border */
+/* One focus treatment everywhere: a 2px accent outline, offset 2px */
 @utility focus-ring {
   &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent-soft);
-    border-color: var(--color-accent);
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 }
 
-/* Interactive-surface transition: exit-speed borders, standard-speed fills */
+/* Interactive-surface transition: brightness hovers, standard-speed fills */
 @utility transition-press {
   transition:
-    transform 160ms var(--ease-exit),
-    border-color 160ms var(--ease-exit),
-    color 160ms var(--ease-exit),
-    background-color 300ms var(--ease-standard);
+    transform 120ms var(--ease-standard),
+    filter 120ms var(--ease-standard),
+    color 120ms var(--ease-standard),
+    background-color 120ms var(--ease-standard);
 }
 
-/* Perforated top edge of a printed proof receipt (the signature element) */
-@utility receipt-edge {
-  border-top-style: dashed;
-}
-
-/* Eyebrow labels: 11px, uppercase, tracking 0.08em; color set at use site */
+/* Status-pill type: 11px, uppercase, tracking 0.08em; color set at use site */
 @utility eyebrow {
   font-size: var(--text-2xs);
   line-height: var(--text-2xs--line-height);
@@ -228,9 +227,10 @@ body {
   background: var(--color-field);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Replay timeline scrubber: transparent native track, accent thumb */
+/* Replay timeline scrubber: raised track, circular ink thumb */
 input.replay-scrub {
   -webkit-appearance: none;
   appearance: none;
@@ -239,47 +239,41 @@ input.replay-scrub {
 }
 input.replay-scrub::-webkit-slider-runnable-track {
   height: 4px;
-  background: transparent;
+  border-radius: 9999px;
+  background: var(--color-elevated);
 }
 input.replay-scrub::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 16px;
   height: 16px;
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  border: 2px solid var(--color-on-accent);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  border-radius: 50%;
+  background: var(--color-ink);
+  border: 0;
   cursor: pointer;
   margin-top: -6px;
 }
 input.replay-scrub::-moz-range-track {
   height: 4px;
-  background: transparent;
+  border-radius: 9999px;
+  background: var(--color-elevated);
 }
 input.replay-scrub::-moz-range-thumb {
   width: 16px;
   height: 16px;
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  border: 2px solid var(--color-on-accent);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  border-radius: 50%;
+  background: var(--color-ink);
+  border: 0;
   cursor: pointer;
 }
 input.replay-scrub:focus {
   outline: none;
 }
 input.replay-scrub:focus-visible::-webkit-slider-thumb {
-  box-shadow:
-    0 0 0 2px var(--color-accent-soft),
-    0 1px 2px rgba(0, 0, 0, 0.4);
-  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-field), 0 0 0 4px var(--color-accent);
 }
 input.replay-scrub:focus-visible::-moz-range-thumb {
-  box-shadow:
-    0 0 0 2px var(--color-accent-soft),
-    0 1px 2px rgba(0, 0, 0, 0.4);
-  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-field), 0 0 0 4px var(--color-accent);
 }
 
 ::selection {

@@ -2,14 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import { copyTextToClipboard } from "@/lib/clipboard";
+import { IconCheck, IconCopy } from "@/components/ui/Icon";
+import { joinClassNames } from "@/lib/joinClassNames";
 
 type CopyButtonProps = {
   value: string;
   ariaLabel: string;
+  /** Lift reads one step above raised panels; elevated sits on cards. */
+  surface?: "elevated" | "lift";
 };
 
-/** Inline "copy" affordance for hashes; flips to "copied" for 1.5 seconds. */
-export function CopyButton({ value, ariaLabel }: CopyButtonProps) {
+/** Copy affordance on a 32px circle; flips to a check for 1.5 seconds. */
+export function CopyButton({
+  value,
+  ariaLabel,
+  surface = "elevated",
+}: CopyButtonProps) {
   const [hasCopied, setHasCopied] = useState(false);
   const resetTimerRef = useRef<number | null>(null);
 
@@ -39,9 +47,28 @@ export function CopyButton({ value, ariaLabel }: CopyButtonProps) {
       type="button"
       onClick={handleCopyClick}
       aria-label={ariaLabel}
-      className="focus-ring -my-3 flex h-11 min-w-11 cursor-pointer items-center justify-center rounded-sm border border-transparent bg-transparent font-mono text-2xs text-accent"
+      className={joinClassNames(
+        "transition-press focus-ring relative inline-flex size-8 flex-none cursor-pointer items-center justify-center rounded-full border-0 hover:brightness-130",
+        surface === "lift" ? "bg-lift" : "bg-elevated",
+        hasCopied ? "text-accent" : "text-ink",
+      )}
     >
-      {hasCopied ? "copied" : "copy"}
+      <span
+        className={joinClassNames(
+          "absolute inline-flex transition-opacity duration-120 ease-standard",
+          hasCopied ? "opacity-0" : "opacity-100",
+        )}
+      >
+        <IconCopy />
+      </span>
+      <span
+        className={joinClassNames(
+          "absolute inline-flex transition-opacity duration-120 ease-standard",
+          hasCopied ? "opacity-100" : "opacity-0",
+        )}
+      >
+        <IconCheck />
+      </span>
     </button>
   );
 }

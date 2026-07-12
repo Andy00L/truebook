@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState, type PointerEvent } from "react";
 import Link from "next/link";
 import { PageShell } from "@/components/ui/PageShell";
-import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { TopBar } from "@/components/ui/TopBar";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { Stamp } from "@/components/ui/Stamp";
 import { HashRow } from "@/components/ui/HashRow";
 import { ChipButton } from "@/components/ui/ChipButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorPanel } from "@/components/ui/ErrorPanel";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { OdometerNumber } from "@/components/ui/OdometerNumber";
+import { PriceEquation } from "@/components/ui/PriceEquation";
+import { DotMatrixChart, ChartLegend, type ChartPoint } from "@/components/ui/DotMatrixChart";
+import { IconArrow, IconPlay, IconPause } from "@/components/ui/Icon";
 import { joinClassNames } from "@/lib/joinClassNames";
 import { formatOdds } from "@/lib/format";
 import { explorerTxUrl } from "@/lib/data/types";
@@ -21,9 +25,8 @@ import {
   getReplayMatch,
   oddsAtMinute,
   scoreAtMinute,
-  type ReplayOddsSnapshot,
+  type ReplayMatch,
 } from "@/lib/data/demoReplay";
-import type { OddsMovePulse } from "@/lib/data/useDemoMatch";
 
 export type ReplayScreenView = "replay" | "loading" | "empty" | "error";
 
@@ -36,86 +39,53 @@ type ReplaySpeed = 1 | 4 | 16;
  */
 const ENGINE_TICK_MS = 100;
 const MATCH_MINUTES_PER_WALL_SECOND = 1;
-/** sourceRef: docs/UI_DESIGN_SYSTEM.md motion tokens (odds tick 300ms) */
-const PULSE_CLEAR_MS = 300;
 const SETTLEMENT_EPSILON_MINUTES = 0.1;
 
-const ODDS_KEYS = ["home", "draw", "away", "over", "under"] as const;
-type OddsKey = (typeof ODDS_KEYS)[number];
+/**
+ * The displayed consensus is recovered from the committed margin, exactly as
+ * the chain client does (served = consensus minus margin).
+ * sourceRef: app/src/lib/chain/truebookClient.ts (marginFactor recovery).
+ */
+const REPLAY_MARGIN_FACTOR = 1.02;
+const REPLAY_MARGIN_LABEL = "2.0%";
 
-function formatReplayClock(minute: number): string {
-  const wholeMinutes = String(Math.floor(minute)).padStart(2, "0");
-  const seconds = String(Math.floor((minute % 1) * 60)).padStart(2, "0");
-  return `${wholeMinutes}:${seconds}`;
+/* Chart geometry (700x240 viewBox, labels at y=230, plot band 12..200). */
+const CHART_VIEW_WIDTH = 700;
+const CHART_VIEW_HEIGHT = 240;
+const CHART_PLOT_TOP = 12;
+const CHART_PLOT_HEIGHT = 188;
+const CHART_LEFT_X = 10;
+const CHART_RIGHT_X = 690;
+const CHART_MINUTE_LABELS = [0, 15, 30, 45, 60, 75, 90] as const;
+
+function chartX(minute: number): number {
+  return (
+    CHART_LEFT_X +
+    (minute / REPLAY_END_MINUTE) * (CHART_RIGHT_X - CHART_LEFT_X)
+  );
 }
 
 function ReplaySkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-4">
-      <div className="flex gap-2">
-        {[0, 1, 2].map((chipIndex) => (
-          <Skeleton key={chipIndex} className="h-11 w-55 rounded-sm" />
-        ))}
-      </div>
-      <SurfaceCard className="flex flex-wrap gap-6 p-5">
-        <div className="min-w-60 flex-1">
-          <Skeleton className="h-3 w-50" />
-          <Skeleton className="mt-3 h-7 w-70 max-w-9/10" />
+    <div aria-hidden="true">
+      <SurfaceCard className="flex flex-wrap justify-between gap-6 p-6">
+        <div>
+          <Skeleton className="h-5 w-52" />
+          <Skeleton className="mt-3 h-3 w-38" />
         </div>
-        <div className="min-w-75 flex-2">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="mt-3.5 h-8 w-3/5" />
+        <div className="flex gap-10">
+          <Skeleton className="h-7.5 w-27.5" />
+          <Skeleton className="h-7.5 w-27.5" />
         </div>
       </SurfaceCard>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
-        {[0, 1].map((cardIndex) => (
-          <SurfaceCard key={cardIndex} className="p-5">
-            <Skeleton
-              className="h-3 w-30"
-              style={{ animationDelay: `${(cardIndex + 1) * 120}ms` }}
-            />
-            <div className="mt-3.5 flex gap-2">
-              {[0, 1, 2].slice(0, cardIndex === 0 ? 3 : 2).map((cellIndex) => (
-                <Skeleton
-                  key={cellIndex}
-                  className="h-18 flex-1"
-                  style={{ animationDelay: `${(cardIndex + 1) * 120}ms` }}
-                />
-              ))}
-            </div>
-          </SurfaceCard>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ReplayOddsCell({
-  label,
-  priceLabel,
-  pulse,
-}: {
-  label: string;
-  priceLabel: string;
-  pulse: OddsMovePulse | null;
-}) {
-  const backgroundClass =
-    pulse === "shorten"
-      ? "bg-accent-soft"
-      : pulse === "lengthen"
-        ? "bg-danger-soft"
-        : "bg-elevated";
-  return (
-    <div
-      className={joinClassNames(
-        "flex min-h-18 min-w-25 flex-1 basis-0 flex-col items-center justify-center gap-1.5 rounded-sm border border-border p-3 transition-[background-color] duration-300 ease-standard",
-        backgroundClass,
-      )}
-    >
-      <span className="eyebrow text-ink-muted">{label}</span>
-      <span className="font-mono text-xl font-semibold tabular-nums text-ink">
-        {priceLabel}
-      </span>
+      <SurfaceCard className="mt-5 p-6">
+        <Skeleton className="h-60 w-full" />
+        <div className="mt-4.5 flex items-center gap-4">
+          <Skeleton className="size-11 rounded-full" />
+          <Skeleton className="h-10 w-40 rounded-full" />
+          <Skeleton className="h-1 flex-1 rounded-full" />
+        </div>
+      </SurfaceCard>
     </div>
   );
 }
@@ -124,20 +94,20 @@ type ReplayScreenProps = {
   initialView: ReplayScreenView;
 };
 
-/** Replay a settled match: score, moving quotes, settlement at the end. */
+/**
+ * Replay a settled match (v3 noir): the dot-matrix price chart is the
+ * instrument. Scrub it, watch the score and the served price roll digit by
+ * digit, and land on the verified settlement.
+ */
 export function ReplayScreen({ initialView }: ReplayScreenProps) {
   const [view, setView] = useState<ReplayScreenView>(initialView);
   const [selectedReplayId, setSelectedReplayId] = useState(
     DEMO_REPLAYS[0].replayId,
   );
-  const [playheadMinute, setPlayheadMinute] = useState(0);
+  const [playheadMinute, setPlayheadMinute] = useState(63);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState<ReplaySpeed>(4);
-  const [oddsPulses, setOddsPulses] = useState<Record<string, OddsMovePulse>>(
-    {},
-  );
-  const previousOddsRef = useRef<ReplayOddsSnapshot | null>(null);
-  const pulseTimersRef = useRef<Partial<Record<OddsKey, number>>>({});
+  const [isScrubbing, setIsScrubbing] = useState(false);
 
   const replay = getReplayMatch(selectedReplayId);
 
@@ -157,32 +127,6 @@ export function ReplayScreen({ initialView }: ReplayScreenProps) {
           previousMinute +
             elapsedSeconds * MATCH_MINUTES_PER_WALL_SECOND * speed,
         );
-        const nextOdds = oddsAtMinute(replay, nextMinute);
-        const previousOdds = previousOddsRef.current ?? nextOdds;
-        for (const oddsKey of ODDS_KEYS) {
-          if (nextOdds[oddsKey] !== previousOdds[oddsKey]) {
-            const pulseDirection: OddsMovePulse =
-              nextOdds[oddsKey] < previousOdds[oddsKey]
-                ? "shorten"
-                : "lengthen";
-            setOddsPulses((currentPulses) => ({
-              ...currentPulses,
-              [oddsKey]: pulseDirection,
-            }));
-            const pendingTimer = pulseTimersRef.current[oddsKey];
-            if (pendingTimer !== undefined) {
-              window.clearTimeout(pendingTimer);
-            }
-            pulseTimersRef.current[oddsKey] = window.setTimeout(() => {
-              setOddsPulses((currentPulses) => {
-                const remainingPulses = { ...currentPulses };
-                delete remainingPulses[oddsKey];
-                return remainingPulses;
-              });
-            }, PULSE_CLEAR_MS);
-          }
-        }
-        previousOddsRef.current = nextOdds;
         if (nextMinute >= REPLAY_END_MINUTE) {
           setIsPlaying(false);
         }
@@ -192,292 +136,348 @@ export function ReplayScreen({ initialView }: ReplayScreenProps) {
     return () => window.clearInterval(engineTimer);
   }, [isPlaying, view, replay, speed]);
 
-  // Clear any pending pulse timers when the screen unmounts.
-  useEffect(() => {
-    const pulseTimers = pulseTimersRef.current;
-    return () => {
-      for (const timerId of Object.values(pulseTimers)) {
-        if (timerId !== undefined) {
-          window.clearTimeout(timerId);
-        }
-      }
-    };
-  }, []);
-
   const selectReplay = (replayId: string) => {
     setSelectedReplayId(replayId);
     setPlayheadMinute(0);
     setIsPlaying(false);
-    setOddsPulses({});
-    previousOddsRef.current = null;
   };
 
   const handlePlayToggle = () => {
     if (playheadMinute >= REPLAY_END_MINUTE) {
-      previousOddsRef.current = replay ? oddsAtMinute(replay, 0) : null;
       setPlayheadMinute(0);
-      setOddsPulses({});
       setIsPlaying(true);
       return;
     }
     setIsPlaying((wasPlaying) => !wasPlaying);
   };
 
-  const handleSeek = (rawValue: string) => {
-    const seekMinute = Number.parseFloat(rawValue) || 0;
-    previousOddsRef.current = replay ? oddsAtMinute(replay, seekMinute) : null;
-    setPlayheadMinute(seekMinute);
-    setOddsPulses({});
+  const scrubFromPointer = (pointerEvent: PointerEvent<HTMLDivElement>) => {
+    const chartBounds = pointerEvent.currentTarget.getBoundingClientRect();
+    const pointerFraction =
+      (pointerEvent.clientX - chartBounds.left) / chartBounds.width;
+    const pointerViewX = pointerFraction * CHART_VIEW_WIDTH;
+    const pointerMinute =
+      ((pointerViewX - CHART_LEFT_X) / (CHART_RIGHT_X - CHART_LEFT_X)) *
+      REPLAY_END_MINUTE;
+    setPlayheadMinute(
+      Math.max(0, Math.min(REPLAY_END_MINUTE, pointerMinute)),
+    );
   };
 
-  const currentOdds = replay ? oddsAtMinute(replay, playheadMinute) : null;
-  const currentScore = replay
-    ? scoreAtMinute(replay, playheadMinute)
-    : { homeScore: 0, awayScore: 0 };
-  const isSettled =
-    playheadMinute >= REPLAY_END_MINUTE - SETTLEMENT_EPSILON_MINUTES;
+  const chartScale = useMemo(() => {
+    if (!replay) {
+      return null;
+    }
+    const homePrices = replay.quoteSteps.map((quoteStep) => quoteStep[1]);
+    const maxPrice = Math.max(...homePrices) * REPLAY_MARGIN_FACTOR;
+    const minPrice = Math.min(...homePrices);
+    const priceSpan = maxPrice - minPrice || 1;
+    const yForPrice = (price: number) =>
+      CHART_PLOT_TOP +
+      (1 - (price - minPrice) / priceSpan) * CHART_PLOT_HEIGHT;
+    const servedPoints: ChartPoint[] = replay.quoteSteps.map((quoteStep) => ({
+      x: chartX(quoteStep[0]),
+      y: yForPrice(quoteStep[1]),
+    }));
+    const consensusPoints: ChartPoint[] = replay.quoteSteps.map(
+      (quoteStep) => ({
+        x: chartX(quoteStep[0]),
+        y: yForPrice(quoteStep[1] * REPLAY_MARGIN_FACTOR),
+      }),
+    );
+    return { servedPoints, consensusPoints, yForPrice };
+  }, [replay]);
 
-  return (
-    <PageShell>
-      <Breadcrumb
-        withMascot
-        tagline="Provably-fair sportsbook on Solana"
-        segments={[{ label: "Fixtures", href: "/" }, { label: "Replay" }]}
-      />
-
-      {view === "loading" ? (
+  if (view === "loading") {
+    return (
+      <PageShell>
+        <TopBar active="replay" />
         <ReplaySkeleton />
-      ) : view === "error" ? (
+      </PageShell>
+    );
+  }
+
+  if (view === "error") {
+    return (
+      <PageShell>
+        <TopBar active="replay" />
         <ErrorPanel
-          title="Couldn't load the replay"
-          message="The archived quote stream didn't respond."
+          title="The price history didn't load"
+          message="The devnet RPC did not respond. The anchored history is still on chain."
           onRetry={() => setView("replay")}
         />
-      ) : view === "empty" || !replay || !currentOdds ? (
+      </PageShell>
+    );
+  }
+
+  if (view === "empty" || !replay || !chartScale) {
+    return (
+      <PageShell>
+        <TopBar active="replay" />
         <EmptyState
-          message="No replayable match in this window."
+          message="No settled matches to replay yet. A match appears here once its score proof anchors."
           action={
             <Link
               href="/"
-              className="focus-ring rounded-sm border border-transparent px-2 py-3 text-sm text-accent no-underline hover:underline"
+              className="focus-ring rounded-full px-2 py-2 text-sm font-medium text-accent no-underline hover:underline"
             >
-              Browse fixtures →
+              Back to the lobby
             </Link>
           }
         />
-      ) : (
-        <>
-          <div className="flex items-baseline justify-between gap-4">
-            <span className="eyebrow text-ink-muted">
-              Replay a settled match
-            </span>
-            <span className="font-mono text-xs tabular-nums text-ink-faint">
-              {DEMO_REPLAYS.length} matches replayable
-            </span>
-          </div>
+      </PageShell>
+    );
+  }
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            {DEMO_REPLAYS.map((replayOption) => (
-              <ChipButton
-                key={replayOption.replayId}
-                isActive={selectedReplayId === replayOption.replayId}
-                onClick={() => selectReplay(replayOption.replayId)}
+  const currentOdds = oddsAtMinute(replay, playheadMinute);
+  const kickoffOdds = oddsAtMinute(replay, 0);
+  const currentScore = scoreAtMinute(replay, playheadMinute);
+  const scoreText = `${currentScore.homeScore} - ${currentScore.awayScore}`;
+  const servedText = formatOdds(currentOdds.home);
+  const consensusText = formatOdds(currentOdds.home * REPLAY_MARGIN_FACTOR);
+  const oddsDelta = currentOdds.home - kickoffOdds.home;
+  const deltaPercent = Math.abs((oddsDelta / kickoffOdds.home) * 100).toFixed(1);
+  const deltaText = `${oddsDelta >= 0 ? "+" : "-"}${Math.abs(oddsDelta).toFixed(2)} (${deltaPercent}%)`;
+  const isSettled =
+    playheadMinute >= REPLAY_END_MINUTE - SETTLEMENT_EPSILON_MINUTES;
+  const playheadLeftPercent = `${((chartX(playheadMinute) / CHART_VIEW_WIDTH) * 100).toFixed(2)}%`;
+  const playheadDotTopPercent = `${((chartScale.yForPrice(currentOdds.home) / CHART_VIEW_HEIGHT) * 100).toFixed(2)}%`;
+  const settlementOutcome = replay.homeWinHolds ? "YES holds" : "NO holds";
+
+  return (
+    <PageShell>
+      <TopBar active="replay" />
+
+      <div className="flex flex-wrap items-center justify-between gap-4 px-1 pb-4">
+        <span className="text-sm text-ink-muted">Replay</span>
+        <div className="flex flex-wrap gap-2">
+          {DEMO_REPLAYS.map((replayOption) => (
+            <ChipButton
+              key={replayOption.replayId}
+              isActive={selectedReplayId === replayOption.replayId}
+              onClick={() => selectReplay(replayOption.replayId)}
+            >
+              {replayOption.homeTeam} vs {replayOption.awayTeam}
+              <span className="text-xs tabular-nums opacity-70">
+                {replayOption.pickerDateLabel}
+              </span>
+            </ChipButton>
+          ))}
+        </div>
+      </div>
+
+      <SurfaceCard className="flex animate-card-in flex-wrap items-start justify-between gap-7 p-6">
+        <div>
+          <div className="text-xl font-medium tracking-tight text-ink">
+            {replay.homeTeam} vs {replay.awayTeam}
+          </div>
+          <div className="mt-1.5 text-sm text-ink-muted">{replay.subLine}</div>
+        </div>
+        <div className="flex flex-wrap items-start gap-11">
+          <div>
+            <div className="text-sm text-ink-muted">Score</div>
+            <div className="mt-1 flex items-baseline gap-2.5">
+              <OdometerNumber
+                value={scoreText}
+                className="text-2xl font-light tabular-nums leading-tight tracking-tight text-ink"
+              />
+              <span className="font-mono text-sm tabular-nums text-ink-muted">
+                {Math.floor(playheadMinute)}&apos;
+              </span>
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-ink-muted">
+              Home win · {replay.homeTeam}
+            </div>
+            <OdometerNumber
+              value={servedText}
+              className="mt-1 text-2xl font-light tabular-nums leading-tight tracking-tight text-ink"
+            />
+            <div
+              className={joinClassNames(
+                "mt-2 inline-flex items-center gap-1.5 text-sm font-medium tabular-nums",
+                oddsDelta >= 0 ? "text-accent" : "text-danger",
+              )}
+            >
+              <IconArrow direction={oddsDelta >= 0 ? "upRight" : "downRight"} />
+              <span>{deltaText}</span>
+              <span className="font-normal text-ink-muted">since kickoff</span>
+            </div>
+            <div className="mt-2.5">
+              <PriceEquation
+                consensusLabel={consensusText}
+                marginLabel={REPLAY_MARGIN_LABEL}
+                servedLabel={servedText}
+              />
+            </div>
+          </div>
+        </div>
+      </SurfaceCard>
+
+      <SurfaceCard
+        className="mt-5 animate-card-in p-6"
+        style={{ animationDelay: "40ms" }}
+      >
+        <div className="mb-2">
+          <ChartLegend />
+        </div>
+        <div
+          aria-hidden="true"
+          className="relative h-60 cursor-ew-resize touch-none"
+          onPointerDown={(pointerEvent) => {
+            pointerEvent.currentTarget.setPointerCapture(
+              pointerEvent.pointerId,
+            );
+            setIsScrubbing(true);
+            setIsPlaying(false);
+            scrubFromPointer(pointerEvent);
+          }}
+          onPointerMove={(pointerEvent) => {
+            if (isScrubbing) {
+              scrubFromPointer(pointerEvent);
+            }
+          }}
+          onPointerUp={() => setIsScrubbing(false)}
+        >
+          <DotMatrixChart
+            servedPoints={chartScale.servedPoints}
+            consensusPoints={chartScale.consensusPoints}
+            viewWidth={CHART_VIEW_WIDTH}
+            viewHeight={CHART_VIEW_HEIGHT}
+            fillBaselineY={200}
+            drawOnLoad
+            ariaLabel={`Served home-win price against consensus for ${replay.homeTeam} vs ${replay.awayTeam}`}
+          >
+            {CHART_MINUTE_LABELS.map((minuteLabel) => (
+              <text
+                key={minuteLabel}
+                x={chartX(minuteLabel)}
+                y={230}
+                fill="var(--color-ink-muted)"
+                fontSize="11"
+                textAnchor="middle"
               >
-                {replayOption.homeTeam} vs {replayOption.awayTeam}
-                <span className="font-mono text-xs tabular-nums text-ink-faint">
-                  {replayOption.pickerDateLabel}
-                </span>
-              </ChipButton>
+                {minuteLabel}&apos;
+              </text>
             ))}
+          </DotMatrixChart>
+          <div
+            className="pointer-events-none absolute top-[5%] h-[78%] w-px bg-ink opacity-85"
+            style={{ left: playheadLeftPercent }}
+          />
+          <div
+            className="pointer-events-none absolute size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent"
+            style={{ left: playheadLeftPercent, top: playheadDotTopPercent }}
+          />
+          <div
+            className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-full bg-elevated px-2.5 py-1 font-mono text-2xs tabular-nums text-ink"
+            style={{ left: playheadLeftPercent }}
+          >
+            {Math.floor(playheadMinute)}&apos;
           </div>
+        </div>
 
-          <SurfaceCard className="mt-4 flex animate-card-in flex-wrap items-center gap-7 p-5">
-            <div className="min-w-62 flex-1 basis-70">
-              <div className="eyebrow text-ink-faint">{replay.subLine}</div>
-              <div className="mt-2.5 flex flex-wrap items-baseline gap-3.5">
-                <span className="text-xl font-semibold text-ink">
-                  {replay.homeTeam}
-                </span>
-                <span className="font-mono text-2xl font-semibold leading-none tabular-nums text-ink">
-                  {currentScore.homeScore} - {currentScore.awayScore}
-                </span>
-                <span className="text-xl font-semibold text-ink">
-                  {replay.awayTeam}
-                </span>
-              </div>
-              <div className="mt-2.5 flex items-center gap-3">
-                <StatusPill variant="neutral">REPLAY</StatusPill>
-                <span className="font-mono text-lg tabular-nums text-ink">
-                  {formatReplayClock(playheadMinute)}
-                </span>
-                <span className="font-mono text-xs tabular-nums text-ink-faint">
-                  / {REPLAY_END_MINUTE}:00
-                </span>
-              </div>
-            </div>
-
-            <div className="min-w-75 flex-2 basis-90">
-              <div className="relative h-11">
-                <div className="absolute inset-x-0 top-5 h-1 rounded-sm bg-border" />
-                <div
-                  className="absolute left-0 top-5 h-1 rounded-sm bg-accent-deep"
-                  style={{
-                    width: `${((playheadMinute / REPLAY_END_MINUTE) * 100).toFixed(2)}%`,
-                  }}
-                />
-                {replay.goals.map((goal) => (
-                  <div
-                    key={`${goal.side}-${goal.minute}`}
-                    className="absolute top-4.5 size-2 -translate-x-1/2 rounded-sm bg-ink"
-                    style={{
-                      left: `${((goal.minute / REPLAY_END_MINUTE) * 100).toFixed(1)}%`,
-                    }}
-                  />
-                ))}
-                <div className="absolute left-full top-4.5 size-2 -translate-x-1/2 rounded-sm bg-accent" />
-                <input
-                  type="range"
-                  className="replay-scrub absolute inset-0 h-11 w-full cursor-pointer"
-                  aria-label="Replay timeline"
-                  min={0}
-                  max={REPLAY_END_MINUTE}
-                  step={0.1}
-                  value={playheadMinute}
-                  onChange={(changeEvent) =>
-                    handleSeek(changeEvent.target.value)
-                  }
-                />
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handlePlayToggle}
-                  aria-label={isPlaying ? "Pause replay" : "Play replay"}
-                  className="transition-press focus-ring flex size-11 cursor-pointer items-center justify-center rounded-md border border-accent bg-accent font-mono text-base text-on-accent active:scale-98"
-                >
-                  {isPlaying ? "❚❚" : "▶"}
-                </button>
-                <div className="ml-2 flex gap-1">
-                  {([1, 4, 16] as const).map((speedOption) => (
-                    <ChipButton
-                      key={speedOption}
-                      isActive={speed === speedOption}
-                      onClick={() => setSpeed(speedOption)}
-                      className="px-3 font-mono text-xs tabular-nums"
-                    >
-                      {speedOption}x
-                    </ChipButton>
-                  ))}
-                </div>
-                <span className="ml-auto font-mono text-xs tabular-nums text-ink-faint">
-                  goals and settlement marked on the timeline
-                </span>
-              </div>
-            </div>
-          </SurfaceCard>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
-            <SurfaceCard
-              className="animate-card-in p-5"
-              style={{ animationDelay: "40ms" }}
+        <div className="mt-4.5 flex flex-wrap items-center gap-4">
+          <button
+            type="button"
+            onClick={handlePlayToggle}
+            aria-label={isPlaying ? "Pause replay" : "Play replay"}
+            className="transition-press focus-ring relative inline-flex size-11 flex-none cursor-pointer items-center justify-center rounded-full border-0 bg-elevated text-ink hover:brightness-130 active:scale-97"
+          >
+            <span
+              className={joinClassNames(
+                "absolute inline-flex transition-opacity duration-120 ease-standard",
+                isPlaying ? "opacity-0" : "opacity-100",
+              )}
             >
-              <div className="flex items-baseline justify-between gap-3">
-                <h3 className="m-0 text-base font-semibold text-ink">
-                  Home win
-                </h3>
-                <span className="eyebrow font-mono text-ink-faint">1x2</span>
-              </div>
-              <div className="mt-3.5 flex gap-2 overflow-x-auto">
-                <ReplayOddsCell
-                  label={replay.homeTeam}
-                  priceLabel={formatOdds(currentOdds.home)}
-                  pulse={oddsPulses.home ?? null}
-                />
-                <ReplayOddsCell
-                  label="Draw"
-                  priceLabel={formatOdds(currentOdds.draw)}
-                  pulse={oddsPulses.draw ?? null}
-                />
-                <ReplayOddsCell
-                  label={replay.awayTeam}
-                  priceLabel={formatOdds(currentOdds.away)}
-                  pulse={oddsPulses.away ?? null}
-                />
-              </div>
-            </SurfaceCard>
-
-            <SurfaceCard
-              className="animate-card-in p-5"
-              style={{ animationDelay: "80ms" }}
+              <IconPlay />
+            </span>
+            <span
+              className={joinClassNames(
+                "absolute inline-flex transition-opacity duration-120 ease-standard",
+                isPlaying ? "opacity-100" : "opacity-0",
+              )}
             >
-              <div className="flex items-baseline justify-between gap-3">
-                <h3 className="m-0 text-base font-semibold text-ink">
-                  Over 2.5 goals
-                </h3>
-                <span className="eyebrow font-mono text-ink-faint">totals</span>
-              </div>
-              <div className="mt-3.5 flex gap-2 overflow-x-auto">
-                <ReplayOddsCell
-                  label="Over 2.5"
-                  priceLabel={formatOdds(currentOdds.over)}
-                  pulse={oddsPulses.over ?? null}
-                />
-                <ReplayOddsCell
-                  label="Under 2.5"
-                  priceLabel={formatOdds(currentOdds.under)}
-                  pulse={oddsPulses.under ?? null}
-                />
-              </div>
-            </SurfaceCard>
+              <IconPause />
+            </span>
+          </button>
+          <SegmentedControl
+            ariaLabel="Replay speed"
+            activeKey={String(speed)}
+            onSelect={(speedKey) =>
+              setSpeed(Number.parseInt(speedKey, 10) as ReplaySpeed)
+            }
+            options={[
+              { key: "1", label: "1x" },
+              { key: "4", label: "4x" },
+              { key: "16", label: "16x" },
+            ]}
+          />
+          <input
+            type="range"
+            className="replay-scrub h-4 min-w-40 flex-1 cursor-pointer"
+            aria-label="Match minute"
+            min={0}
+            max={REPLAY_END_MINUTE}
+            step={1}
+            value={Math.floor(playheadMinute)}
+            onChange={(changeEvent) => {
+              setIsPlaying(false);
+              setPlayheadMinute(
+                Number.parseInt(changeEvent.target.value, 10) || 0,
+              );
+            }}
+          />
+        </div>
 
+        <div
+          className="grid transition-[grid-template-rows] duration-250 ease-standard"
+          style={{ gridTemplateRows: isSettled ? "1fr" : "0fr" }}
+        >
+          <div className="overflow-hidden">
             {isSettled ? (
-              <SurfaceCard elevated className="receipt-edge animate-card-in p-5">
-                <div className="eyebrow text-ink-faint">Settlement fired</div>
-                <div className="mt-3 flex flex-col gap-2 font-mono text-sm tabular-nums">
-                  <div className="flex justify-between gap-4">
-                    <span className="text-ink-muted">final score</span>
-                    <span className="text-ink">{replay.resultScoreLine}</span>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <span className="text-ink-muted">home win holds</span>
-                    <span className="text-ink">
-                      {String(replay.homeWinHolds)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <span className="text-ink-muted">over 2.5 holds</span>
-                    <span className="text-ink">{String(replay.overHolds)}</span>
-                  </div>
+              <div className="mt-4.5 rounded-sm bg-elevated px-4.5 py-2.5">
+                <div
+                  className="flex animate-card-in items-center justify-between py-2"
+                  style={{ animationDelay: "0ms" }}
+                >
+                  <span className="text-sm text-ink-muted">Outcome</span>
+                  <span className="text-base font-medium text-ink">
+                    {settlementOutcome} · {replay.resultScoreLine}
+                  </span>
                 </div>
-                <div className="mb-2.5 mt-3.5 border-t border-dashed border-border" />
-                <div className="flex flex-col gap-1">
+                <div
+                  className="animate-card-in"
+                  style={{ animationDelay: "40ms" }}
+                >
                   <HashRow
-                    label="day root"
+                    label="Day root"
                     value={replay.dayRoot}
                     href={explorerTxUrl(replay.verifyTx)}
-                    labelWidthClass="w-20"
                   />
                   <HashRow
-                    label="verify tx"
+                    label="Verify tx"
                     value={replay.verifyTx}
                     href={explorerTxUrl(replay.verifyTx)}
-                    labelWidthClass="w-20"
                   />
                 </div>
-                <div className="mt-3.5 flex flex-wrap items-center gap-4">
-                  <Stamp tone="accent">VERIFIED ON SOLANA</Stamp>
+                <div className="flex flex-wrap items-center justify-center gap-4 py-3">
+                  <StatusPill variant="accent" animateIn animateInDelayMs={420}>
+                    Verified on Solana
+                  </StatusPill>
                   <Link
                     href={replay.verifyPageHref}
-                    className="focus-ring rounded-sm border border-transparent px-1 py-3 font-mono text-xs text-accent no-underline hover:underline"
+                    className="focus-ring rounded-full px-1 py-1 text-sm font-medium text-accent no-underline hover:underline"
                   >
-                    public verify page →
+                    Public verify page
                   </Link>
                 </div>
-              </SurfaceCard>
+              </div>
             ) : null}
           </div>
-        </>
-      )}
+        </div>
+      </SurfaceCard>
     </PageShell>
   );
 }

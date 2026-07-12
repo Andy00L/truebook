@@ -1,32 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getDemoFixture } from "@/lib/data/demoFixtures";
 import type { MatchView } from "@/lib/data/types";
 
 /**
  * Demo provider for the match screen. Simulates the live feed the keeper
- * will supply from TxLINE once the program is deployed: a running match
- * clock, small odds moves with green/red pulses, and the screen states.
+ * supplies from TxLINE: a running match clock, small odds moves, and the
+ * screen states. Price-move presentation (the odometer roll and the delta
+ * chip) lives in the cells themselves, which detect served-price changes.
  */
 
 export type MatchScreenView = "loading" | "live" | "postMatch" | "oddsError";
-
-export type OddsMovePulse = "shorten" | "lengthen";
 
 type LiveOdds = { served: number; consensus: number };
 
 type DemoMatchState = {
   view: MatchScreenView;
   match: MatchView | null;
-  oddsPulses: Record<string, OddsMovePulse>;
   retryOdds: () => void;
 };
 
 const LOADING_RESOLVE_MS = 1600;
 const ODDS_MOVE_INTERVAL_MS = 4000;
-/** sourceRef: docs/UI_DESIGN_SYSTEM.md motion tokens (odds tick 300ms) */
-const PULSE_CLEAR_MS = 300;
 
 function buildInitialOdds(fixture: MatchView | null): Record<string, LiveOdds> {
   const initialOdds: Record<string, LiveOdds> = {};
@@ -56,10 +52,6 @@ export function useDemoMatch(
   const [oddsByOutcome, setOddsByOutcome] = useState<Record<string, LiveOdds>>(
     () => buildInitialOdds(fixture),
   );
-  const [oddsPulses, setOddsPulses] = useState<Record<string, OddsMovePulse>>(
-    {},
-  );
-  const pulseTimersRef = useRef<number[]>([]);
 
   const isFixtureLive = fixture?.phase === "live";
 
@@ -102,7 +94,7 @@ export function useDemoMatch(
         const delta =
           direction * (0.01 + Math.floor(Math.random() * 4) * 0.01);
         const moved = previousOdds[movedKey];
-        const nextOdds: Record<string, LiveOdds> = {
+        return {
           ...previousOdds,
           [movedKey]: {
             served: Math.max(1.01, Number((moved.served + delta).toFixed(2))),
@@ -112,33 +104,10 @@ export function useDemoMatch(
             ),
           },
         };
-        setOddsPulses((previousPulses) => ({
-          ...previousPulses,
-          [movedKey]: direction < 0 ? "shorten" : "lengthen",
-        }));
-        const clearTimer = window.setTimeout(() => {
-          setOddsPulses((previousPulses) => {
-            const remainingPulses = { ...previousPulses };
-            delete remainingPulses[movedKey];
-            return remainingPulses;
-          });
-        }, PULSE_CLEAR_MS);
-        pulseTimersRef.current.push(clearTimer);
-        return nextOdds;
       });
     }, ODDS_MOVE_INTERVAL_MS);
     return () => window.clearInterval(moveTimer);
   }, [isFixtureLive, view]);
-
-  // Clear any pending pulse timers when the screen unmounts.
-  useEffect(() => {
-    const pulseTimers = pulseTimersRef.current;
-    return () => {
-      for (const timerId of pulseTimers) {
-        window.clearTimeout(timerId);
-      }
-    };
-  }, []);
 
   const match = useMemo<MatchView | null>(() => {
     if (!fixture) {
@@ -172,7 +141,6 @@ export function useDemoMatch(
   return {
     view,
     match,
-    oddsPulses,
     retryOdds: () => setView("live"),
   };
 }
