@@ -13,6 +13,7 @@ import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { TicketRow } from "@/components/tickets/TicketRow";
 import { TicketsSkeleton } from "@/components/tickets/TicketsSkeleton";
 import { CashOutSheet } from "@/components/tickets/CashOutSheet";
+import { AuditPanel } from "@/components/tickets/AuditPanel";
 import {
   DEMO_TICKETS,
   filterTickets,
@@ -20,8 +21,25 @@ import {
 } from "@/lib/data/demoTickets";
 import { useChainTickets } from "@/lib/chain/useChainTickets";
 import { cashOutTicketOnChain } from "@/lib/chain/cashOut";
+import {
+  auditCashOutOnChain,
+  auditTicketOnChain,
+  refundTicketOnChain,
+  type AuditResult,
+} from "@/lib/chain/audit";
 import type { CashOutOffer, TicketView } from "@/lib/data/types";
 import type { ChainActionResult, ChainStage } from "@/lib/chain/placeBet";
+
+/** Chain tickets that expose the live "Audit & earn" flow in their receipt. */
+const AUDITABLE_STATUSES: ReadonlyArray<TicketView["status"]> = [
+  "live",
+  "lost",
+  "won",
+  "cashedOut",
+];
+
+const WALLET_CANNOT_SIGN =
+  "The connected wallet cannot sign transactions here. Connect Phantom or Solflare instead.";
 
 export type TicketsScreenView = "tickets" | "loading" | "empty" | "error";
 
@@ -75,11 +93,7 @@ export function TicketsScreen({ initialView, dataSource }: TicketsScreenProps) {
     onStage: (stage: ChainStage) => void,
   ): Promise<ChainActionResult> => {
     if (!anchorWallet) {
-      return {
-        ok: false,
-        reason:
-          "The connected wallet cannot sign transactions here. Connect Phantom or Solflare instead.",
-      };
+      return { ok: false, reason: WALLET_CANNOT_SIGN };
     }
     return cashOutTicketOnChain(
       anchorWallet,
@@ -87,6 +101,28 @@ export function TicketsScreen({ initialView, dataSource }: TicketsScreenProps) {
       offer.marketAddress,
       onStage,
     );
+  };
+
+  const handleAudit = async (
+    picked: TicketView,
+    onStage: (stage: ChainStage) => void,
+  ): Promise<AuditResult> => {
+    if (!anchorWallet) {
+      return { ok: false, reason: WALLET_CANNOT_SIGN };
+    }
+    return picked.status === "cashedOut"
+      ? auditCashOutOnChain(anchorWallet, picked.ticketId, onStage)
+      : auditTicketOnChain(anchorWallet, picked.ticketId, onStage);
+  };
+
+  const handleRefund = async (
+    picked: TicketView,
+    onStage: (stage: ChainStage) => void,
+  ): Promise<ChainActionResult> => {
+    if (!anchorWallet) {
+      return { ok: false, reason: WALLET_CANNOT_SIGN };
+    }
+    return refundTicketOnChain(anchorWallet, picked.ticketId, onStage);
   };
 
   const isChainWalletMissing = isChainSource && ownerBase58 === null;
@@ -201,6 +237,17 @@ export function TicketsScreen({ initialView, dataSource }: TicketsScreenProps) {
                   enterDelayMs={ticketIndex * 40}
                   onCashOut={
                     isChainSource ? (picked) => setCashOutTicket(picked) : undefined
+                  }
+                  auditPanel={
+                    isChainSource &&
+                    AUDITABLE_STATUSES.includes(ticket.status) ? (
+                      <AuditPanel
+                        ticket={ticket}
+                        runAudit={handleAudit}
+                        runRefund={handleRefund}
+                        onSettled={chainTickets.refresh}
+                      />
+                    ) : undefined
                   }
                 />
               ))}

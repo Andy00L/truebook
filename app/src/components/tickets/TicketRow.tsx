@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { StatusPill } from "@/components/ui/StatusPill";
@@ -19,6 +19,8 @@ type TicketRowProps = {
   enterDelayMs: number;
   /** Chain source: opens the cash-out sheet for this ticket's offer. */
   onCashOut?: (ticket: TicketView) => void;
+  /** Chain source: the interactive "Audit & earn" flow for this ticket. */
+  auditPanel?: ReactNode;
 };
 
 function TicketStatusPill({ status }: { status: TicketView["status"] }) {
@@ -56,6 +58,7 @@ export function TicketRow({
   onToggle,
   enterDelayMs,
   onCashOut,
+  auditPanel,
 }: TicketRowProps) {
   // Remount the receipt content per expansion so its cascade replays.
   const [expandSequence, setExpandSequence] = useState(0);
@@ -182,19 +185,26 @@ export function TicketRow({
                 style={{ animationDelay: enterDelayFor(rowCount + 3) }}
               >
                 <HashRow label="Quote id" value={ticket.proof.quoteId} />
-                <div className="flex flex-wrap items-center gap-4 py-2">
-                  <a
-                    href={ticket.proof.auditHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="focus-ring rounded-full px-1 py-1 text-sm font-medium text-accent no-underline hover:underline"
-                  >
-                    Audit this price
-                  </a>
-                </div>
-                <p className="m-0 pb-1 text-xs leading-normal text-ink-faint">
-                  {ticket.proof.note}
-                </p>
+                {auditPanel ? (
+                  // Chain source: the live audit flow replaces the static link.
+                  auditPanel
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-4 py-2">
+                      <a
+                        href={ticket.proof.auditHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="focus-ring rounded-full px-1 py-1 text-sm font-medium text-accent no-underline hover:underline"
+                      >
+                        Audit this price
+                      </a>
+                    </div>
+                    <p className="m-0 pb-1 text-xs leading-normal text-ink-faint">
+                      {ticket.proof.note}
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <>
