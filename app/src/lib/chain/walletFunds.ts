@@ -10,7 +10,7 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { USDT_MINT_DEVNET } from "@truebook/shared/config";
-import type { ChainActionResult } from "./placeBet";
+import { readUsdtBalanceUi, type ChainActionResult } from "./placeBet";
 import {
   CONFIRM_TIMEOUT_MS,
   RPC_READ_TIMEOUT_MS,
@@ -34,32 +34,21 @@ export async function fetchWalletFunds(
 ): Promise<WalletFundsResult> {
   try {
     const connection = createDevnetConnection();
-    const lamports = await withDeadline(
-      connection.getBalance(owner),
-      RPC_READ_TIMEOUT_MS,
-      "The devnet RPC timed out while reading the wallet balance.",
-    );
     const usdtAta = getAssociatedTokenAddressSync(
       USDT_MINT_DEVNET,
       owner,
       false,
       TOKEN_PROGRAM_ID,
     );
-    // A wallet that never drew from the faucet has no ATA yet; that is 0.
-    const ataInfo = await withDeadline(
-      connection.getAccountInfo(usdtAta),
-      RPC_READ_TIMEOUT_MS,
-      "The devnet RPC timed out while reading the USDT account.",
-    );
-    let usdtUiAmount = 0;
-    if (ataInfo !== null) {
-      const balance = await withDeadline(
-        connection.getTokenAccountBalance(usdtAta),
+    // One parallel read batch; a wallet without an ATA simply reads as 0.
+    const [lamports, usdtUiAmount] = await Promise.all([
+      withDeadline(
+        connection.getBalance(owner),
         RPC_READ_TIMEOUT_MS,
-        "The devnet RPC timed out while reading the USDT balance.",
-      );
-      usdtUiAmount = balance.value.uiAmount ?? 0;
-    }
+        "The devnet RPC timed out while reading the wallet balance.",
+      ),
+      readUsdtBalanceUi(connection, usdtAta),
+    ]);
     return {
       ok: true,
       funds: { sol: lamports / LAMPORTS_PER_SOL, usdt: usdtUiAmount },

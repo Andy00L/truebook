@@ -1,10 +1,11 @@
 /**
  * Wallet-signed devnet actions: place a bet on a market and draw test USDT
- * from the TxLINE faucet. Every RPC read, the wallet signature, and the
- * confirmation each run under their own deadline (connection.ts), balances
- * are preflighted so a wallet funded on mainnet but empty on devnet gets an
- * actionable message instead of a frozen spinner, and errors come back as
- * values for the UI to render.
+ * from the TxLINE faucet. Latency to the wallet prompt is the UX-critical
+ * path, so every read needed before signing runs in ONE parallel batch (a
+ * single RPC round-trip instead of five sequential ones), each under its own
+ * deadline (connection.ts). Balances are preflighted so a wallet funded on
+ * mainnet but empty on devnet gets an actionable message instead of a frozen
+ * spinner, and errors come back as values for the UI to render.
  */
 
 import { BN, Program, type Idl } from "@coral-xyz/anchor";
@@ -14,6 +15,7 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
+  type BlockhashWithExpiryBlockHeight,
 } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -93,21 +95,62 @@ function randomNonce(): BN {
 }
 
 /**
- * Shared tail of every wallet flow: blockhash, wallet signature, send,
- * confirm. Each step has its own deadline and failure message so a stall
- * names the stage instead of spinning.
+ * The wallet's test-USDT balance in one RPC call: a missing token account
+ * answers "could not find account", which simply means 0.
+ */
+export async function readUsdtBalanceUi(
+  connection: Connection,
+  tokenAccount: PublicKey,
+): Promise<number> {
+  try {
+    const balance = await withDeadline(
+      connection.getTokenAccountBalance(tokenAccount),
+      RPC_READ_TIMEOUT_MS,
+      "The devnet RPC timed out while reading the USDT balance.",
+    );
+    return balance.value.uiAmount ?? 0;
+  } catch (balanceError) {
+    if (String(balanceError).toLowerCase().includes("could not find")) {
+      return 0;
+    }
+    throw balanceError;
+  }
+}
+
+// The house vault address never changes after setup; fetch it once per
+// session so repeat bets skip the account read entirely.
+let cachedHouseVault: PublicKey | null = null;
+
+async function fetchHouseVault(program: Program<Truebook>): Promise<PublicKey> {
+  if (cachedHouseVault !== null) {
+    return cachedHouseVault;
+  }
+  const housePda = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("house")],
+    program.programId,
+  )[0];
+  const house = await withDeadline(
+    program.account.house.fetch(housePda),
+    RPC_READ_TIMEOUT_MS,
+    "The devnet RPC timed out while reading the house account.",
+  );
+  cachedHouseVault = house.vault;
+  return house.vault;
+}
+
+/**
+ * Shared tail of every wallet flow: wallet signature, send, confirm. The
+ * blockhash arrives from the caller's parallel read batch so the wallet
+ * prompt opens without one more sequential round-trip. Each step has its own
+ * deadline and failure message so a stall names the stage.
  */
 async function signSendAndConfirm(
   connection: Connection,
   wallet: AnchorWallet,
   transaction: Transaction,
+  latestBlockhash: BlockhashWithExpiryBlockHeight,
   onStage?: (stage: ChainStage) => void,
 ): Promise<ChainActionResult> {
-  const latestBlockhash = await withDeadline(
-    connection.getLatestBlockhash("confirmed"),
-    RPC_READ_TIMEOUT_MS,
-    "The devnet RPC timed out while preparing the transaction.",
-  );
   transaction.feePayer = wallet.publicKey;
   transaction.recentBlockhash = latestBlockhash.blockhash;
 
@@ -138,57 +181,14 @@ async function signSendAndConfirm(
   return { ok: true, signature };
 }
 
-/**
- * Fails fast, before any wallet prompt, when the connected wallet cannot pay
- * for the bet on devnet. This is the mainnet-wallet trap: funds on mainnet,
- * zero on devnet, and without this check the flow dies in wallet simulation.
- */
-async function preflightBetFunds(
+function fetchLatestBlockhash(
   connection: Connection,
-  owner: PublicKey,
-  stakeUiAmount: number,
-): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const lamports = await withDeadline(
-    connection.getBalance(owner),
+): Promise<BlockhashWithExpiryBlockHeight> {
+  return withDeadline(
+    connection.getLatestBlockhash("confirmed"),
     RPC_READ_TIMEOUT_MS,
-    "The devnet RPC timed out while reading the wallet balance.",
+    "The devnet RPC timed out while preparing the transaction.",
   );
-  if (lamports < TRANSACTION_FEE_LAMPORTS) {
-    return {
-      ok: false,
-      reason: `No devnet SOL to pay the network fee. Open Judge mode and request devnet SOL first. ${DEVNET_HINT}`,
-    };
-  }
-  const bettorTokenAccount = getAssociatedTokenAddressSync(
-    USDT_MINT_DEVNET,
-    owner,
-    false,
-    TOKEN_PROGRAM_ID,
-  );
-  const tokenAccountInfo = await withDeadline(
-    connection.getAccountInfo(bettorTokenAccount),
-    RPC_READ_TIMEOUT_MS,
-    "The devnet RPC timed out while reading the USDT balance.",
-  );
-  if (tokenAccountInfo === null) {
-    return {
-      ok: false,
-      reason: `No test USDT in this wallet yet. Open Judge mode and request test USDT first. ${DEVNET_HINT}`,
-    };
-  }
-  const tokenBalance = await withDeadline(
-    connection.getTokenAccountBalance(bettorTokenAccount),
-    RPC_READ_TIMEOUT_MS,
-    "The devnet RPC timed out while reading the USDT balance.",
-  );
-  const usdtAvailable = tokenBalance.value.uiAmount ?? 0;
-  if (usdtAvailable < stakeUiAmount) {
-    return {
-      ok: false,
-      reason: `Stake exceeds the devnet USDT balance (${usdtAvailable.toFixed(2)} available). Request more in Judge mode.`,
-    };
-  }
-  return { ok: true };
 }
 
 export async function placeBetOnChain(
@@ -203,31 +203,46 @@ export async function placeBetOnChain(
     const connection = createDevnetConnection();
     const program = buildReadOnlyTruebookProgram(connection);
     const market = new PublicKey(marketAddress);
-
-    const fundsCheck = await preflightBetFunds(
-      connection,
-      wallet.publicKey,
-      stakeUiAmount,
-    );
-    if (!fundsCheck.ok) {
-      return fundsCheck;
-    }
-
-    const housePda = PublicKey.findProgramAddressSync(
-      [new TextEncoder().encode("house")],
-      program.programId,
-    )[0];
-    const house = await withDeadline(
-      program.account.house.fetch(housePda),
-      RPC_READ_TIMEOUT_MS,
-      "The devnet RPC timed out while reading the house account.",
-    );
     const bettorTokenAccount = getAssociatedTokenAddressSync(
       USDT_MINT_DEVNET,
       wallet.publicKey,
       false,
       TOKEN_PROGRAM_ID,
     );
+
+    // One parallel read batch: everything needed before the wallet prompt.
+    const [lamports, usdtAvailable, houseVault, latestBlockhash] =
+      await Promise.all([
+        withDeadline(
+          connection.getBalance(wallet.publicKey),
+          RPC_READ_TIMEOUT_MS,
+          "The devnet RPC timed out while reading the wallet balance.",
+        ),
+        readUsdtBalanceUi(connection, bettorTokenAccount),
+        fetchHouseVault(program),
+        fetchLatestBlockhash(connection),
+      ]);
+
+    // Preflight: fail fast, before any wallet prompt, when the wallet cannot
+    // pay on devnet (the mainnet-wallet trap: funds there, zero here).
+    if (lamports < TRANSACTION_FEE_LAMPORTS) {
+      return {
+        ok: false,
+        reason: `No devnet SOL to pay the network fee. Open Judge mode and request devnet SOL first. ${DEVNET_HINT}`,
+      };
+    }
+    if (usdtAvailable <= 0) {
+      return {
+        ok: false,
+        reason: `No test USDT in this wallet yet. Open Judge mode and request test USDT first. ${DEVNET_HINT}`,
+      };
+    }
+    if (usdtAvailable < stakeUiAmount) {
+      return {
+        ok: false,
+        reason: `Stake exceeds the devnet USDT balance (${usdtAvailable.toFixed(2)} available). Request more in Judge mode.`,
+      };
+    }
 
     const stakeRaw = new BN(Math.round(stakeUiAmount * USDT_DECIMAL_FACTOR));
     const sideArg = side === "yes" ? { yes: {} } : { no: {} };
@@ -237,11 +252,17 @@ export async function placeBetOnChain(
       .accounts({
         bettor: wallet.publicKey,
         market,
-        vault: house.vault,
+        vault: houseVault,
         bettorTokenAccount,
       })
       .transaction();
-    return await signSendAndConfirm(connection, wallet, betTransaction, onStage);
+    return await signSendAndConfirm(
+      connection,
+      wallet,
+      betTransaction,
+      latestBlockhash,
+      onStage,
+    );
   } catch (betError) {
     return { ok: false, reason: describeChainError(betError) };
   }
@@ -250,7 +271,7 @@ export async function placeBetOnChain(
 /**
  * The judge-panel faucet: mints test USDT to the connected wallet's ATA.
  * ATA creation and the faucet draw ride one transaction, so the wallet
- * prompts once instead of twice.
+ * prompts once, and the pre-prompt reads run as one parallel batch.
  */
 export async function requestFaucetUsdtForWallet(
   wallet: AnchorWallet,
@@ -281,16 +302,20 @@ export async function requestFaucetUsdtForWallet(
       TOKEN_PROGRAM_ID,
     );
 
-    const ataInfo = await withDeadline(
-      connection.getAccountInfo(userUsdtAta),
-      RPC_READ_TIMEOUT_MS,
-      "The devnet RPC timed out while reading the USDT account.",
-    );
-    const lamports = await withDeadline(
-      connection.getBalance(wallet.publicKey),
-      RPC_READ_TIMEOUT_MS,
-      "The devnet RPC timed out while reading the wallet balance.",
-    );
+    const [ataInfo, lamports, latestBlockhash] = await Promise.all([
+      withDeadline(
+        connection.getAccountInfo(userUsdtAta),
+        RPC_READ_TIMEOUT_MS,
+        "The devnet RPC timed out while reading the USDT account.",
+      ),
+      withDeadline(
+        connection.getBalance(wallet.publicKey),
+        RPC_READ_TIMEOUT_MS,
+        "The devnet RPC timed out while reading the wallet balance.",
+      ),
+      fetchLatestBlockhash(connection),
+    ]);
+
     const lamportsNeeded =
       TRANSACTION_FEE_LAMPORTS +
       (ataInfo === null ? TOKEN_ACCOUNT_RENT_LAMPORTS : 0);
@@ -331,6 +356,7 @@ export async function requestFaucetUsdtForWallet(
       connection,
       wallet,
       faucetTransaction,
+      latestBlockhash,
       onStage,
     );
   } catch (faucetError) {
