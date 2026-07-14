@@ -16,3 +16,9 @@ keypair.json
 
 # exports Claude Design (source locale; la verite versionnee est docs/)
 design-export/
+
+# boucle Claude Design v2: palette card, prompt pack, retours generes
+ui-design/
+
+# listing officiel du sponsor (texte copyrighte, reference locale seulement)
+docs/HACKATHON_LISTING.md
