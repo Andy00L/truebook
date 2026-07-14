@@ -41,6 +41,10 @@ import {
   fetchStatValidationProof,
   type TxlineProofResult,
 } from "@/lib/server/txlineProofs";
+import { clientKeyFromRequest, isRateLimited } from "@/lib/server/rateLimit";
+
+/** Receipt assembly costs a dozen upstream calls; keep floods off it. */
+const RECEIPT_REQUESTS_PER_MINUTE = 10;
 
 type ReceiptFailure = { ok: false; reason: string };
 
@@ -90,6 +94,9 @@ function proofFailureResponse(result: Extract<TxlineProofResult, { ok: false }>)
 }
 
 export async function GET(request: Request): Promise<Response> {
+  if (isRateLimited(clientKeyFromRequest(request), RECEIPT_REQUESTS_PER_MINUTE)) {
+    return jsonFailure("Too many receipt requests. Wait a minute and retry.", 429);
+  }
   const ticketParam = new URL(request.url).searchParams.get("ticket") ?? "";
   let ticketKey: PublicKey;
   try {

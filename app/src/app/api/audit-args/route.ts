@@ -8,6 +8,10 @@
  */
 
 import { fetchOddsValidationProof } from "@/lib/server/txlineProofs";
+import { clientKeyFromRequest, isRateLimited } from "@/lib/server/rateLimit";
+
+/** Generous for humans clicking audits; a wall for request floods. */
+const AUDIT_ARGS_REQUESTS_PER_MINUTE = 30;
 
 /** Anything crossing back to the browser: the public record and its proof. */
 type AuditArgsResponse =
@@ -40,6 +44,12 @@ function jsonResponse(body: AuditArgsResponse, status: number): Response {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  if (isRateLimited(clientKeyFromRequest(request), AUDIT_ARGS_REQUESTS_PER_MINUTE)) {
+    return jsonResponse(
+      { ok: false, reason: "Too many audit requests. Wait a minute and retry." },
+      429,
+    );
+  }
   let payload: unknown;
   try {
     payload = await request.json();

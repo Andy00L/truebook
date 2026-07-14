@@ -60,7 +60,10 @@ async function runTickOrSettle(command: string, marketArg: string | undefined): 
   const connection = getConnection();
   const keypair = loadKeeperKeypair();
   const program = buildProgram(connection, keypair);
-  console.log(`[main] keeper ${keypair.publicKey.toBase58()} on ${connection.rpcEndpoint}`);
+  // The endpoint may carry an api-key query param (Helius); never log it.
+  console.log(
+    `[main] keeper ${keypair.publicKey.toBase58()} on ${connection.rpcEndpoint.split("?")[0]}`,
+  );
 
   const authResult = await acquireTxlineAuth(connection, keypair);
   if (!authResult.ok) {
