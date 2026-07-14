@@ -3,6 +3,8 @@
 
 export * from "./config.js";
 export * from "./marketCatalog.js";
+export * from "./proofArgs.js";
+export * from "./receipt.js";
 export * from "./txline/types.js";
 export * from "./txline/sse.js";
 export * from "./txline/client.js";

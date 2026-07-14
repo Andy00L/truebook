@@ -11,6 +11,8 @@
 //   audit-cashout <receipt>  prove a cash-out's price against consensus
 //   refund <ticket>      refund a refundable ticket's stake to its bettor
 //   serve [seconds]      loop markets + in-play + quotes + settle + re-rig
+//   export-receipt <ticket> [outFile]  write the ticket's portable proof receipt
+//   verify-receipt <file.json>         re-verify a receipt (no token, no keypair)
 
 import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
@@ -18,6 +20,8 @@ import { USDT_MINT_DEVNET } from "@truebook/shared";
 import { buildProgram, getConnection, loadKeeperKeypair } from "./env.js";
 import { fundHouseVault } from "./fund.js";
 import { listBoard } from "./list.js";
+import { exportTicketReceipt } from "./receipt.js";
+import { verifyTicketReceipt } from "./verifyReceipt.js";
 import { acquireTxlineAuth } from "./txlineAuth.js";
 import {
   DEFAULT_RIG_FACTOR,
@@ -93,6 +97,22 @@ async function runTickOrSettle(command: string, marketArg: string | undefined): 
     return;
   }
 
+  if (command === "export-receipt") {
+    if (!marketArg) {
+      console.error("[main] usage: export-receipt <ticketPubkey> [outFile]");
+      process.exit(1);
+    }
+    const outFile = process.argv[4] ?? `../docs/receipts/${marketArg}.json`;
+    const exported = await exportTicketReceipt(
+      program,
+      auth,
+      new PublicKey(marketArg),
+      outFile,
+    );
+    if (!exported) process.exit(1);
+    return;
+  }
+
   if (command === "serve") {
     const intervalArg = marketArg === undefined ? DEFAULT_SERVE_INTERVAL_SECONDS : Number(marketArg);
     if (!Number.isFinite(intervalArg) || intervalArg < 15) {
@@ -141,6 +161,17 @@ async function runFund(amountArg: string | undefined): Promise<void> {
 
 async function main(): Promise<void> {
   const command = process.argv[2] ?? "tick";
+  // verify-receipt needs neither a keypair nor a TxLINE token: the proofs
+  // are embedded in the file and the chain checks are free simulations.
+  if (command === "verify-receipt") {
+    const receiptFileArg = process.argv[3];
+    if (!receiptFileArg) {
+      console.error("[main] usage: verify-receipt <receipt.json>");
+      process.exit(1);
+    }
+    const receiptPassed = await verifyTicketReceipt(getConnection(), receiptFileArg);
+    process.exit(receiptPassed ? 0 : 1);
+  }
   if (command === "setup") {
     await runSetup();
     return;
@@ -197,7 +228,8 @@ async function main(): Promise<void> {
     if (!refunded) process.exit(1);
     return;
   }
-  // tick, settle, rig, audit, audit-cashout, and serve authenticate to TxLINE first.
+  // tick, settle, rig, audit, audit-cashout, export-receipt, and serve
+  // authenticate to TxLINE first.
   await runTickOrSettle(command, process.argv[3]);
 }
 

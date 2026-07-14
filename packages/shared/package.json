@@ -8,6 +8,9 @@
     ".": "./src/index.ts",
     "./config": "./src/config.ts",
     "./marketCatalog": "./src/marketCatalog.ts",
+    "./proofArgs": "./src/proofArgs.ts",
+    "./receipt": "./src/receipt.ts",
+    "./txline/types": "./src/txline/types.ts",
     "./idl/txoracle": "./src/idl/txoracle-devnet.json",
     "./idl/truebook.json": "./src/idl/truebook.json",
     "./idl/truebook-type": "./src/idl/truebook.ts"

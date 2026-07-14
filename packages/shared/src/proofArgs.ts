@@ -1,12 +1,14 @@
 // Convert TxLINE proof payloads into the argument shapes verify_market and
-// audit_ticket expect. The seed ts differs per validator: validate_stat wants
+// audit_ticket (and audit_cash_out) expect. Shared by the keeper (Node ops)
+// and the app's browser audit flow, so both build identical args from one
+// source. The seed ts differs per validator: validate_stat wants
 // summary.updateStats.minTimestamp, validate_odds wants the odds record's own
 // Ts (its rs:20 check throws 6010 TimestampMismatch otherwise). The test
 // fixture had both equal by coincidence; the live devnet audit of July 9,
 // 2026 exposed the asymmetry.
 
 import { BN } from "@coral-xyz/anchor";
-import type { ScoresStatValidation, OddsValidation, ProofNode } from "@truebook/shared";
+import type { ScoresStatValidation, OddsValidation, ProofNode } from "./txline/types.js";
 import {
   ANCHOR_CMP_EQUAL_TO,
   ANCHOR_CMP_GREATER_THAN,
@@ -14,7 +16,7 @@ import {
   ANCHOR_OP_ADD,
   ANCHOR_OP_SUBTRACT,
   type NormalizedMarketParams,
-} from "@truebook/shared";
+} from "./marketCatalog.js";
 
 const mapProof = (nodes: ProofNode[]) =>
   nodes.map((node) => ({ hash: node.hash, isRightSibling: node.isRightSibling }));

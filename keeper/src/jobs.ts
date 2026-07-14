@@ -26,6 +26,8 @@ import {
   type TxlineAuth,
   PREMATCH_CATALOG,
   TXLINE_PROGRAM_ID,
+  buildOddsArgs,
+  buildStatArgs,
   describeMarketParams,
   fixtureStartMs,
   getFixturesSnapshot,
@@ -41,7 +43,6 @@ import {
 import { cashOutReceiptPda, dailyOddsRootPda, dailyScoresRootPda, ticketPda } from "./pdas.js";
 import { requestFaucetUsdt, readUsdtBalance } from "./fund.js";
 import { houseQuoteFromConsensus, riggedQuoteFromConsensus } from "./pricing.js";
-import { buildOddsArgs, buildStatArgs } from "./proofArgs.js";
 
 const CU_LIMIT = 1_400_000;
 // sourceRef: mint ELWTKspH... on devnet (classic SPL token, 6 decimals).
