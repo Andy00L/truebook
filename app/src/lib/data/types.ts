@@ -140,6 +140,8 @@ export type CashOutOffer = {
 
 export type TicketView = {
   ticketId: string;
+  /** On-chain market account address; present when the source is devnet. */
+  marketAddress?: string;
   marketName: string;
   pickLabel: string;
   fixtureLine: string;
@@ -166,6 +168,11 @@ export type TicketView = {
 /** Solana explorer link for a devnet transaction signature. */
 export function explorerTxUrl(signature: string): string {
   return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+}
+
+/** Solana explorer link for a devnet account address. */
+export function explorerAddressUrl(address: string): string {
+  return `https://explorer.solana.com/address/${address}?cluster=devnet`;
 }
 
 /** Shown wherever an open market has no posted quote yet (lobby and match). */

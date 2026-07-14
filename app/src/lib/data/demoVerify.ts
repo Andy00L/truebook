@@ -15,6 +15,8 @@ export type VerifyMarketView = {
   outcomeLabel?: "YES" | "NO";
   outcomeStatement?: string;
   dayRoot?: string;
+  /** Chain source: the day root is an account, linked by address. */
+  dayRootHref?: string;
   merkleNodes?: ReadonlyArray<{ label: string; hash: string }>;
   verifyTx?: string;
   pageLink: string;

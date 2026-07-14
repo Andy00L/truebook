@@ -43,6 +43,24 @@ export function formatMatchupLabel(homeTeam: string, awayTeam: string): string {
   return awayTeam ? `${homeTeam} vs ${awayTeam}` : homeTeam;
 }
 
+/** "Jul 5 · 20:14:32 UTC" for receipt rows and settlement lines. */
+export function formatUtcTimestamp(unixSeconds: number): string {
+  const stampDate = new Date(unixSeconds * 1000);
+  const dayLabel = stampDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  const timeLabel = stampDate.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  });
+  return `${dayLabel} · ${timeLabel} UTC`;
+}
+
 /** "4d2c70b8...101033" style middle truncation for hashes and signatures */
 export function truncateMiddle(
   value: string,

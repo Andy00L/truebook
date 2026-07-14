@@ -19,9 +19,15 @@ import {
   type MarketDescriptor,
 } from "@truebook/shared/marketCatalog";
 import type { MarketView, MatchView } from "@/lib/data/types";
-import { formatMarginBps } from "@/lib/format";
+import { explorerAddressUrl } from "@/lib/data/types";
+import type { VerifyMarketView } from "@/lib/data/demoVerify";
+import { formatMarginBps, formatUtcTimestamp } from "@/lib/format";
 import { getFixtureNames } from "@/lib/chain/fixtureNames";
-import { createDevnetConnection } from "@/lib/chain/connection";
+import {
+  RPC_READ_TIMEOUT_MS,
+  createDevnetConnection,
+  withDeadline,
+} from "@/lib/chain/connection";
 
 export type ChainHouseStats = {
   vaultLabel: string;
@@ -158,6 +164,148 @@ function toMarketView(
         ]
       : [],
   };
+}
+
+export type ChainVerifyResult =
+  | { ok: true; view: VerifyMarketView | null }
+  | { ok: false; reason: string };
+
+/**
+ * Index of the daily_scores_merkle_roots account in verify_market's account
+ * list, so the ACTUAL root the proof ran against comes out of the on-chain
+ * transaction instead of being re-guessed from a timestamp.
+ * sourceRef: packages/shared/src/idl/truebook.json (verify_market accounts:
+ * cranker, house, market, verified_outcome, daily_scores_merkle_roots, ...).
+ */
+const VERIFY_MARKET_SCORES_ROOT_ACCOUNT_INDEX = 4;
+
+/**
+ * The market's verification story for the public /verify/[market] page:
+ * the Market account, its VerifiedOutcome PDA (["outcome", market], absent
+ * until verify_market runs), the verify transaction (the outcome account is
+ * written once, so its oldest signature IS that transaction), and the daily
+ * scores root the proof was checked against. One-shot fetch; the screen
+ * offers a retry button instead of polling.
+ */
+export async function fetchChainVerify(
+  marketAddress: string,
+  pageOrigin: string,
+): Promise<ChainVerifyResult> {
+  let market: PublicKey;
+  try {
+    market = new PublicKey(marketAddress);
+  } catch {
+    // Not a devnet address at all: same "nothing anchored here" screen as an
+    // unknown demo slug, not an RPC error.
+    return { ok: true, view: null };
+  }
+  try {
+    const program = buildReadOnlyProgram();
+    const connection = program.provider.connection;
+    const marketAccount = await withDeadline(
+      program.account.market.fetchNullable(market),
+      RPC_READ_TIMEOUT_MS,
+      "The devnet RPC timed out while reading the market.",
+    );
+    if (marketAccount === null) {
+      return { ok: true, view: null };
+    }
+
+    const outcomePda = PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode("outcome"), market.toBytes()],
+      program.programId,
+    )[0];
+    const outcome = await withDeadline(
+      program.account.verifiedOutcome.fetchNullable(outcomePda),
+      RPC_READ_TIMEOUT_MS,
+      "The devnet RPC timed out while reading the verified outcome.",
+    );
+
+    const descriptor = describeMarketParams(
+      normalizeMarketParams(marketAccount.params),
+    );
+    const names = getFixtureNames(marketAccount.fixtureId.toString());
+    const fixtureName = names.awayTeam
+      ? `${names.homeTeam} vs ${names.awayTeam}`
+      : names.homeTeam;
+    const baseView = {
+      slug: marketAddress,
+      fixtureName,
+      marketName: descriptor?.name ?? "Custom market",
+      competitionLine: names.competitionLine,
+      pageLink: `${pageOrigin}/verify/${marketAddress}`,
+    };
+
+    if (outcome === null) {
+      return {
+        ok: true,
+        view: {
+          ...baseView,
+          status: "awaiting",
+          kickoffLine: `${formatKickoff(marketAccount.kickoffTs.toNumber() * 1000)} UTC`,
+        },
+      };
+    }
+
+    const outcomeSignatures = await withDeadline(
+      connection.getSignaturesForAddress(outcomePda),
+      RPC_READ_TIMEOUT_MS,
+      "The devnet RPC timed out while looking up the verify transaction.",
+    );
+    const verifyTx =
+      outcomeSignatures.length > 0
+        ? outcomeSignatures[outcomeSignatures.length - 1].signature
+        : undefined;
+
+    // Pull the daily scores root the verify transaction actually referenced.
+    // Best effort: a failed transaction lookup only hides the root row.
+    let dayRoot: string | undefined;
+    let dayRootHref: string | undefined;
+    if (verifyTx !== undefined) {
+      try {
+        const verifyTransaction = await withDeadline(
+          connection.getParsedTransaction(verifyTx, {
+            maxSupportedTransactionVersion: 0,
+          }),
+          RPC_READ_TIMEOUT_MS,
+          "The devnet RPC timed out while reading the verify transaction.",
+        );
+        for (const instruction of verifyTransaction?.transaction.message
+          .instructions ?? []) {
+          if (!instruction.programId.equals(program.programId)) continue;
+          if (!("accounts" in instruction)) continue;
+          const scoresRoot =
+            instruction.accounts[VERIFY_MARKET_SCORES_ROOT_ACCOUNT_INDEX];
+          if (scoresRoot !== undefined) {
+            dayRoot = scoresRoot.toBase58();
+            dayRootHref = explorerAddressUrl(dayRoot);
+          }
+          break;
+        }
+      } catch (rootLookupError) {
+        console.warn(
+          `[fetchChainVerify] verify tx lookup failed, omitting the day root: ${String(rootLookupError).slice(0, 120)}`,
+        );
+      }
+    }
+
+    const predicateHolds = outcome.outcome;
+    return {
+      ok: true,
+      view: {
+        ...baseView,
+        status: "verified",
+        settledLine: `settled ${formatUtcTimestamp(outcome.verifiedTs.toNumber())}`,
+        outcomeLabel: predicateHolds ? "YES" : "NO",
+        outcomeStatement: `${descriptor?.name ?? "predicate"} ${predicateHolds ? "holds" : "does not hold"} · proof seq ${outcome.seq}`,
+        dayRoot,
+        dayRootHref,
+        verifyTx,
+      },
+    };
+  } catch (fetchError) {
+    return { ok: false, reason: String(fetchError) };
+  }
 }
 
 export async function fetchChainBoard(): Promise<ChainBoardResult> {

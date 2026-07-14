@@ -13,12 +13,21 @@ import { IconCheck, IconLink } from "@/components/ui/Icon";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { joinClassNames } from "@/lib/joinClassNames";
 import { explorerTxUrl } from "@/lib/data/types";
+import { useChainVerify } from "@/lib/chain/useChainVerify";
 import type { VerifyMarketView } from "@/lib/data/demoVerify";
 
 export type VerifyScreenView = "resolved" | "loading" | "error";
 
+export type VerifyDataSource = "demo" | "chain";
+
 type VerifyScreenProps = {
+  /** Demo fixtures, or the market account read live from devnet. */
+  dataSource: VerifyDataSource;
+  /** Demo slug or on-chain market address, straight from the URL. */
+  marketAddress: string;
+  /** The demo lookup result; null on the chain source (the screen fetches). */
   market: VerifyMarketView | null;
+  /** Demo only: ?view= drives the judge-visible loading and error states. */
   initialView: VerifyScreenView;
 };
 
@@ -110,8 +119,31 @@ function VerifySkeleton() {
  * proof block on raised. A stranger opens this on a phone and trusts it
  * without trusting our site.
  */
-export function VerifyScreen({ market, initialView }: VerifyScreenProps) {
-  const [view, setView] = useState<VerifyScreenView>(initialView);
+export function VerifyScreen({
+  dataSource,
+  marketAddress,
+  market: demoMarket,
+  initialView,
+}: VerifyScreenProps) {
+  const isChainSource = dataSource === "chain";
+  const [demoView, setDemoView] = useState<VerifyScreenView>(initialView);
+  const chainVerify = useChainVerify(isChainSource, marketAddress);
+
+  // Both sources collapse onto one view model: which state to render, the
+  // market view when resolved, and what a retry does.
+  const market = isChainSource
+    ? chainVerify.state.status === "ready"
+      ? chainVerify.state.view
+      : null
+    : demoMarket;
+  const view: VerifyScreenView = isChainSource
+    ? chainVerify.state.status === "ready"
+      ? "resolved"
+      : chainVerify.state.status
+    : demoView;
+  const handleRetry = isChainSource
+    ? chainVerify.refresh
+    : () => setDemoView("resolved");
 
   return (
     <div className="mx-auto flex w-full flex-col items-center px-4 pb-20 pt-16">
@@ -122,7 +154,17 @@ export function VerifyScreen({ market, initialView }: VerifyScreenProps) {
         TrueBook
       </Link>
 
-      {!market ? (
+      {view === "loading" ? (
+        <VerifySkeleton />
+      ) : view === "error" ? (
+        <div className="w-full max-w-140">
+          <ErrorPanel
+            title="The chain didn't answer"
+            message="The devnet RPC did not respond. The proof is still on chain; try again."
+            onRetry={handleRetry}
+          />
+        </div>
+      ) : !market ? (
         <div className="w-full max-w-140">
           <EmptyState
             message="Market not found. Nothing is anchored at this address on devnet."
@@ -134,16 +176,6 @@ export function VerifyScreen({ market, initialView }: VerifyScreenProps) {
                 Back to the lobby
               </Link>
             }
-          />
-        </div>
-      ) : view === "loading" ? (
-        <VerifySkeleton />
-      ) : view === "error" ? (
-        <div className="w-full max-w-140">
-          <ErrorPanel
-            title="The chain didn't answer"
-            message="The devnet RPC did not respond. The proof is still on chain; try again."
-            onRetry={() => setView("resolved")}
           />
         </div>
       ) : (
@@ -195,17 +227,17 @@ export function VerifyScreen({ market, initialView }: VerifyScreenProps) {
               </>
             )}
 
-            {market.status === "verified" &&
-            market.dayRoot &&
-            market.verifyTx ? (
+            {market.status === "verified" && market.verifyTx ? (
               <>
                 <div className="my-5 border-t border-border" />
                 <div className="rounded-sm bg-elevated px-4.5 py-2.5">
-                  <HashRow
-                    label="Day root"
-                    value={market.dayRoot}
-                    href={explorerTxUrl(market.verifyTx)}
-                  />
+                  {market.dayRoot ? (
+                    <HashRow
+                      label="Day root"
+                      value={market.dayRoot}
+                      href={market.dayRootHref ?? explorerTxUrl(market.verifyTx)}
+                    />
+                  ) : null}
                   {(market.merkleNodes ?? []).map((merkleNode) => (
                     <HashRow
                       key={merkleNode.label}
