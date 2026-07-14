@@ -79,6 +79,17 @@ const FIXTURE_NAMES: Record<string, FixtureNameEntry> = {
     awayTeam: "Switzerland",
     competitionLine: "TxLINE devnet · international friendly",
   },
+  // Fixtures added by the tick of 2026-07-14 (TxLINE snapshot).
+  "18242838": {
+    homeTeam: "New Zealand",
+    awayTeam: "India",
+    competitionLine: "TxLINE devnet · international friendly",
+  },
+  "18242839": {
+    homeTeam: "New Zealand",
+    awayTeam: "India",
+    competitionLine: "TxLINE devnet · international friendly",
+  },
   // Markets 13 and 14, created by the tick of 2026-07-12 (TxLINE snapshot).
   "18237038": {
     homeTeam: "France",
