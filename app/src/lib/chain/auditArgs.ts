@@ -3,7 +3,7 @@
  * quote (via the server route that holds the TxLINE token), then reshape it
  * into the Anchor argument object audit_ticket / audit_cash_out expect. All
  * big integers become BN here; every field mirrors the on-chain
- * ValidateOddsArgs and the keeper's buildOddsArgs (keeper/src/proofArgs.ts).
+ * ValidateOddsArgs and the shared buildOddsArgs (packages/shared/src/proofArgs.ts).
  */
 
 import { BN } from "@coral-xyz/anchor";

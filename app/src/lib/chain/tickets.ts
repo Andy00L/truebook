@@ -12,8 +12,14 @@ import {
   describeMarketParams,
   normalizeMarketParams,
 } from "@truebook/shared/marketCatalog";
-import type { CashOutOffer, TicketView } from "@/lib/data/types";
-import { formatAmount, formatMatchupLabel, formatOdds, formatOddsBps } from "@/lib/format";
+import { explorerAddressUrl, type CashOutOffer, type TicketView } from "@/lib/data/types";
+import {
+  formatAmount,
+  formatMatchupLabel,
+  formatOdds,
+  formatOddsBps,
+  formatUtcTimestamp,
+} from "@/lib/format";
 import { getFixtureNames } from "@/lib/chain/fixtureNames";
 import { createDevnetConnection, RPC_READ_TIMEOUT_MS, withDeadline } from "@/lib/chain/connection";
 import { buildReadOnlyTruebookProgram } from "@/lib/chain/placeBet";
@@ -39,24 +45,6 @@ const TICKET_BETTOR_OFFSET = 40;
 
 function enumVariant(enumObject: object): string {
   return Object.keys(enumObject)[0] ?? "unknown";
-}
-
-/** "Jul 5 · 20:14:32 UTC" for receipt rows. */
-function formatReceiptTimestamp(unixSeconds: number): string {
-  const stampDate = new Date(unixSeconds * 1000);
-  const dayLabel = stampDate.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-  const timeLabel = stampDate.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-    timeZone: "UTC",
-  });
-  return `${dayLabel} · ${timeLabel} UTC`;
 }
 
 /**
@@ -251,7 +239,7 @@ export async function fetchChainTickets(
       }
       receiptRows.push({
         label: "Placed",
-        value: formatReceiptTimestamp(ticket.createdTs.toNumber()),
+        value: formatUtcTimestamp(ticket.createdTs.toNumber()),
       });
 
       // The transparency line: consensus is recovered from the served odds
@@ -269,6 +257,7 @@ export async function fetchChainTickets(
 
       views.push({
         ticketId: ticketAddress,
+        marketAddress,
         marketName: descriptor?.name ?? "Custom market",
         pickLabel,
         fixtureLine: names
@@ -285,7 +274,7 @@ export async function fetchChainTickets(
         proof: {
           kind: "priceOnly",
           quoteId,
-          auditHref: `https://explorer.solana.com/address/${ticketAddress}?cluster=devnet`,
+          auditHref: explorerAddressUrl(ticketAddress),
           note:
             status === "cashedOut"
               ? "This cash-out price is auditable: anyone can prove the quote it derived from against TxLINE consensus. A proven lowball repays the difference and pays the auditor 5% of the stake."

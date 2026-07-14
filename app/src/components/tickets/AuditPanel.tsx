@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { SpinnerDot } from "@/components/ui/SpinnerDot";
 import { CircleIconLink, IconLink } from "@/components/ui/Icon";
 import { formatAmount, truncateMiddle } from "@/lib/format";
 import { explorerTxUrl, type TicketView } from "@/lib/data/types";
@@ -30,17 +31,6 @@ function stageLabel(stage: ChainStage | null): string {
   if (stage === "signing") return "Approve in your wallet";
   if (stage === "confirming") return "Confirming on Solana";
   return "Fetching the consensus proof";
-}
-
-function SpinnerDot() {
-  return (
-    <span
-      aria-hidden="true"
-      className="relative inline-block size-4 flex-none animate-spin-dot"
-    >
-      <span className="absolute left-1/2 top-0 -ml-[3px] size-1.5 rounded-full bg-current" />
-    </span>
-  );
 }
 
 /**

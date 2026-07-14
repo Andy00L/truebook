@@ -14,6 +14,7 @@ import { TicketRow } from "@/components/tickets/TicketRow";
 import { TicketsSkeleton } from "@/components/tickets/TicketsSkeleton";
 import { CashOutSheet } from "@/components/tickets/CashOutSheet";
 import { AuditPanel } from "@/components/tickets/AuditPanel";
+import { DownloadReceiptButton } from "@/components/tickets/DownloadReceiptButton";
 import {
   DEMO_TICKETS,
   filterTickets,
@@ -247,6 +248,23 @@ export function TicketsScreen({ initialView, dataSource }: TicketsScreenProps) {
                         runRefund={handleRefund}
                         onSettled={chainTickets.refresh}
                       />
+                    ) : undefined
+                  }
+                  proofActions={
+                    // A live ticket's story is still being written; every
+                    // other state has a portable receipt worth downloading.
+                    isChainSource && ticket.status !== "live" ? (
+                      <>
+                        <DownloadReceiptButton ticketAddress={ticket.ticketId} />
+                        {ticket.marketAddress ? (
+                          <Link
+                            href={`/verify/${ticket.marketAddress}`}
+                            className="focus-ring rounded-full px-1 py-1 text-sm font-medium text-accent no-underline hover:underline"
+                          >
+                            Public verify page
+                          </Link>
+                        ) : null}
+                      </>
                     ) : undefined
                   }
                 />

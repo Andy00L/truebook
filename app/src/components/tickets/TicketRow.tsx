@@ -21,6 +21,8 @@ type TicketRowProps = {
   onCashOut?: (ticket: TicketView) => void;
   /** Chain source: the interactive "Audit & earn" flow for this ticket. */
   auditPanel?: ReactNode;
+  /** Chain source: receipt download and public verify links for the proof. */
+  proofActions?: ReactNode;
 };
 
 function TicketStatusPill({ status }: { status: TicketView["status"] }) {
@@ -59,6 +61,7 @@ export function TicketRow({
   enterDelayMs,
   onCashOut,
   auditPanel,
+  proofActions,
 }: TicketRowProps) {
   // Remount the receipt content per expansion so its cascade replays.
   const [expandSequence, setExpandSequence] = useState(0);
@@ -205,6 +208,11 @@ export function TicketRow({
                     </p>
                   </>
                 )}
+                {proofActions ? (
+                  <div className="flex flex-wrap items-center gap-4 py-2">
+                    {proofActions}
+                  </div>
+                ) : null}
               </div>
             ) : (
               <>
