@@ -17,7 +17,7 @@ even on a losing ticket.
 <img src="https://img.shields.io/badge/network-Solana%20devnet-1E242B" alt="network Solana devnet">
 <img src="https://img.shields.io/badge/settlement-TxLINE%20score%20proofs-1E242B" alt="settlement TxLINE score proofs">
 <img src="https://img.shields.io/badge/price%20audit-validate__odds%20CPI-00E676" alt="price audit validate_odds CPI">
-<img src="https://img.shields.io/badge/tests-7%20passing-00E676" alt="tests 7 passing">
+<img src="https://img.shields.io/badge/tests-9%20passing-00E676" alt="tests 9 passing">
 <img src="https://img.shields.io/badge/license-MIT-555555" alt="license MIT">
 </p>
 
@@ -63,14 +63,24 @@ auditable after the fact. The house is held honest by code, not by trust.
   `validate_stat` instruction, reads the boolean outcome from return data, and
   writes it to a `VerifiedOutcome` account. The submitted proof is bound to the
   market's committed predicate, so a keeper cannot resolve a different question.
-- **Provable price audit.** `audit_ticket` cross-program calls `validate_odds` to
-  authenticate the odds record a ticket references, then compares the served
-  implied probability against consensus plus the stated margin. A proven overcharge
-  sets the ticket refundable, even a losing one, and even if the house already
-  settled it to Lost first.
-- **Permissionless cranks.** `lock_market`, `settle_ticket`, `void_market`, and
-  `refund_ticket` can be called by anyone; the outcome and the math are on chain,
-  not in an operator's discretion.
+- **Provable price audit, paid.** `audit_ticket` cross-program calls
+  `validate_odds` to authenticate the odds record a ticket references, then
+  compares the served implied probability against consensus plus the stated
+  margin. A proven overcharge sets the ticket refundable, even a losing one, and
+  even if the house already settled it to Lost first; the first prover earns 5%
+  of the stake from the vault's free liquidity.
+- **Provable cash-out.** `cash_out_ticket` buys a live ticket back at a price
+  derived on chain from the current quote (payout weighted by the opposite
+  side's implied complement) and records the quote's provenance in a
+  `CashOutReceipt`; `audit_cash_out` proves a lowball the same way an opening
+  price is proven, and `claim_cash_out_repair` repays the shortfall.
+- **Portable proof receipts.** Any ticket exports a JSON receipt (quote proofs,
+  outcome proof, every transaction signature) that
+  `keeper verify-receipt <file>` re-proves against devnet with no TxLINE token
+  and no keypair. Two committed under [docs/receipts/](docs/receipts/).
+- **Permissionless cranks.** `lock_market`, `verify_market`, `settle_ticket`,
+  `refund_ticket`, and the audits can be called by anyone; the outcome and the
+  math are on chain, not in an operator's discretion.
 
 ## 🏗 How it works
 
@@ -118,12 +128,17 @@ program stores that predicate and binds every settlement proof to it.
 | Home win | goals(P1) minus goals(P2) greater than 0 | Total |
 | Draw | goals(P1) minus goals(P2) equal to 0 | Total |
 | Over 2.5 goals | goals(P1) plus goals(P2) greater than 2 | Total |
-| Second-half corners over 4.5 | corners(P1) plus corners(P2) greater than 4 | 2nd half |
+| Home wins by 2+ | goals(P1) minus goals(P2) greater than 1 | Total |
+| Over 0.5 first-half goals | goals(P1) plus goals(P2) greater than 0 | 1st half |
 
 `stat` keys and periods come straight from the TxLINE score encoding (key 1 is
-Participant1 goals, key 2 is Participant2 goals, period 0 is Total). A 1X2 board is
-three of these binary markets. The devnet keeper currently lists home-win markets;
-the other predicates are supported by the program and exercised in the tests.
+Participant1 goals, key 2 is Participant2 goals, period 0 is Total). A 1X2 board
+is three of these binary markets. The devnet keeper lists this full pre-match
+catalog per fixture (seven markets: the 1X2 trio, two totals lines, a first-half
+line, and a winning-margin line) plus short-window in-play totals lines over the
+live score during matches. `create_market` refuses any predicate that maps to no
+TxLINE consensus record, because such a market could never be priced or audited
+honestly (corners markets are absent for exactly that reason).
 
 ## 🔗 Live on devnet
 
@@ -145,9 +160,9 @@ Try it in two minutes, no setup:
 2. Open a match and place a bet. The price-transparency popover shows the TxLINE
    consensus price, the served price, and the margin between them, side by side.
    Sign the bet in your wallet.
-3. Open **Tickets**, click **Audit this price** on a ticket. The app cross-program
-   calls `validate_odds`; an overcharge is stamped PROVEN OVERCHARGE on chain and
-   the ticket becomes refundable.
+3. Open **Tickets**, click **Audit & earn 5%** on a ticket. Your wallet submits
+   the `validate_odds` proof; an overcharge is stamped PROVEN OVERCHARGE on
+   chain, the ticket becomes refundable, and the audit pays you 5% of its stake.
 
 Evidence:
 
@@ -162,6 +177,22 @@ Evidence:
   operator, comparison, or threshold do not match the market's committed predicate
   (`PredicateMismatch`), so a keeper cannot settle a different question than
   bettors were quoted. This is asserted in the test suite.
+- **Receipts outlive us.** Re-verify the committed sting receipt against devnet
+  yourself, with no TxLINE account and no wallet:
+
+  ```bash
+  cd keeper && bun run src/index.ts verify-receipt ../docs/receipts/sting.json
+  ```
+
+  Success is the last line printing `[verifyReceipt] PASS` (it re-derives the
+  merkle root accounts, re-runs `validate_odds` and `validate_stat` as free
+  simulations, and checks every referenced transaction exists).
+
+Deeper reading: [docs/TECHNICAL_OVERVIEW.md](docs/TECHNICAL_OVERVIEW.md) (trust
+model, instruction map, audit math),
+[docs/TXLINE_API_FEEDBACK.md](docs/TXLINE_API_FEEDBACK.md) (eight verified
+integration frictions), and
+[docs/SECURITY_AUDIT_2026-07-14.md](docs/SECURITY_AUDIT_2026-07-14.md).
 
 ## 🧪 Reproduce it
 
@@ -179,13 +210,14 @@ cd program
 anchor test
 ```
 
-Success looks like the suite printing `7 passing`. `anchor test` starts a local
+Success looks like the suite printing `9 passing`. `anchor test` starts a local
 validator that clones the live TxLINE oracle program, its program data, and two
 daily merkle roots from devnet, deploys TrueBook, then runs the full flow:
 initialize the house, fund the vault, create a home-win market, quote it, place a
 YES bet, lock, `verify_market` by CPI, settle the winner, audit the served price,
-and refund a losing ticket that was settled before its audit. It writes nothing to
-devnet.
+refund a losing ticket that was settled before its audit, cash a live ticket out
+at the on-chain price and audit it honest, and repay a lowballed cash-out with
+the auditor's bounty. It writes nothing to devnet.
 
 Evidence the system can say no, not only yes:
 
@@ -197,33 +229,43 @@ Evidence the system can say no, not only yes:
 
 To run the surface yourself: `cd app && bun run dev` starts the frontend, and
 `cd keeper && bun run src/index.ts list` prints the live house and every market
-from devnet. The keeper commands are `setup`, `fund`, `list`, `tick`, `settle`,
-and `rig`.
+from devnet. The keeper commands are `setup`, `fund`, `list`, `tick`, `serve`,
+`settle`, `rig`, `bet`, `cashout`, `audit`, `audit-cashout`, `refund`,
+`export-receipt`, and `verify-receipt`.
 
 ## ⚠️ What is real and what is simplified
 
-- **The program is deployed and test-proven.** Twelve instructions, `anchor test`
-  green (seven cases) against the real TxLINE oracle cloned from devnet, and the
-  program is live at `59txn6d3rHFtvhocB5ZvhhJsTurGNq1d1gcbDy7o43fh` on devnet.
+- **The program is deployed and test-proven.** Fifteen instructions,
+  `anchor test` green (nine cases) against the real TxLINE oracle cloned from
+  devnet, and the program is live at
+  `59txn6d3rHFtvhocB5ZvhhJsTurGNq1d1gcbDy7o43fh` on devnet.
 - **The frontend is built and deployed.** Lobby, match with the price-transparency
   popover, tickets with proof receipts, a public verify page, and a replay view,
   live at the URL above. Screenshots are not embedded in this README yet; the live
   app is the proof, and the capture list is noted in the source for a later pass.
 - **The keeper is run live on devnet.** It authenticates to TxLINE, creates
-  markets, quotes them from the live odds feed, and locks them at kickoff. It is a
-  manual crank run around match windows, not an always-on service. Settlement runs
-  by CPI as proven in the suite; each market settles from a score proof as its
-  match finishes.
+  markets, quotes them from the live odds feed, locks them at kickoff, and its
+  `serve` loop re-quotes and auto-settles finished fixtures. It is operator-run
+  around match windows, not a hosted always-on service. Settlement runs by CPI
+  as proven in the suite; each market settles from a score proof as its match
+  finishes.
 - **Betting uses a test SPL mint.** On devnet the book uses the TxLINE test USDT
   mint (`ELWTK...G2Ujh`, six decimals); the integration test uses a local mint it
   controls. No real funds, no KYC.
-- **One market type is live so far.** The keeper currently creates home-win
-  markets. The program supports the other predicates in the table above, and the
-  tests exercise them; wiring them into the live catalog is catalog-and-UI work
-  with no program change.
+- **The live catalog is goals-only.** The keeper lists the seven-market
+  pre-match catalog from the table above per fixture, plus in-play totals
+  windows. Every predicate is a goals pair, because those are the questions the
+  devnet feed publishes both a consensus price and a provable stat for; corners
+  or cards markets would be unpriceable and unauditable, so `create_market`
+  refuses them.
 - **The NO-side consensus is the demargined complement.** For a binary market the
   NO implied probability is derived as one minus the YES implied probability. A
   multi-way board would carry an explicit price index per outcome.
+- **The authority holds a void lever.** The house authority can void an Open or
+  Locked market before its outcome is anchored, refunding every stake, which
+  exists for unresolvable fixtures but could also be used to dodge a losing
+  book. The counterweight is that `verify_market` is permissionless: anyone can
+  anchor the outcome first, and a Verified market can no longer be voided.
 - **Vault solvency is conservative.** The vault must cover the full potential
   payout of every live ticket at once, with no netting of opposite sides. It is a
   safe over-collateralization, and simpler to audit than a netted book.
@@ -244,11 +286,11 @@ and `rig`.
 ## 📦 Repository layout
 
 ```
-program/          Anchor program: house, markets, tickets, CPI settlement and price audit
+program/          Anchor program: house, markets, tickets, CPI settlement, price audit, cash-out
 app/              Next.js (App Router) frontend, live on devnet
-keeper/           TypeScript bot: auth, create markets, quote, lock, verify, settle
-packages/shared/  TxLINE client (auth, SSE, proofs), shared types, program IDLs
-docs/             build plan, research, spike findings, toolchain notes
+keeper/           TypeScript bot: auth, markets, quotes, settle, audits, receipts
+packages/shared/  TxLINE client (auth, SSE, proofs), shared types, receipt schema, IDLs
+docs/             technical overview, API feedback, security audit, receipts, research
 ```
 
 ## 📜 License
